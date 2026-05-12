@@ -1,0 +1,9 @@
+{
+  "/matches/[id]/page": "app/matches/[id]/page.js",
+  "/matches/page": "app/matches/page.js",
+  "/head-to-head/page": "app/head-to-head/page.js",
+  "/page": "app/page.js",
+  "/matches/new/page": "app/matches/new/page.js",
+  "/leaderboard/page": "app/leaderboard/page.js",
+  "/api/head-to-head/route": "app/api/head-to-head/route.js"
+}

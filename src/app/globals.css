@@ -1,0 +1,91 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * { box-sizing: border-box; }
+  
+  ::selection {
+    background: #4ade8040;
+    color: #4ade80;
+  }
+
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: #0c0e14; }
+  ::-webkit-scrollbar-thumb { background: #2a2d3a; border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: #3a3d4a; }
+}
+
+@layer components {
+  .card {
+    @apply bg-[#1a1d27] border border-[#2a2d3a] rounded-2xl;
+  }
+  
+  .btn-primary {
+    @apply bg-pitch-600 hover:bg-pitch-500 text-white font-semibold px-5 py-2.5 rounded-xl
+           transition-all duration-200 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+  
+  .btn-secondary {
+    @apply bg-[#2a2d3a] hover:bg-[#3a3d4a] text-white font-semibold px-5 py-2.5 rounded-xl
+           transition-all duration-200 active:scale-95;
+  }
+  
+  .btn-ghost {
+    @apply text-gray-400 hover:text-white hover:bg-[#2a2d3a] px-4 py-2 rounded-xl transition-all;
+  }
+
+  .input {
+    @apply bg-[#0c0e14] border border-[#2a2d3a] rounded-xl px-4 py-2.5 text-white
+           focus:outline-none focus:border-pitch-600 focus:ring-1 focus:ring-pitch-600/50
+           placeholder-gray-600 transition-colors w-full;
+  }
+
+  .select {
+    @apply bg-[#0c0e14] border border-[#2a2d3a] rounded-xl px-4 py-2.5 text-white
+           focus:outline-none focus:border-pitch-600 focus:ring-1 focus:ring-pitch-600/50
+           transition-colors w-full appearance-none cursor-pointer;
+  }
+
+  .badge {
+    @apply inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold;
+  }
+
+  .stat-card {
+    @apply card p-4 flex flex-col gap-1;
+  }
+
+  .elo-up { @apply text-green-400; }
+  .elo-down { @apply text-red-400; }
+}
+
+/* Pitch texture background for decorative elements */
+.pitch-texture {
+  background-image: 
+    repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 40px,
+      rgba(255,255,255,0.015) 40px,
+      rgba(255,255,255,0.015) 41px
+    );
+}
+
+/* Gradient text */
+.gradient-text {
+  background: linear-gradient(135deg, #4ade80, #22c55e);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Glow effect */
+.glow-green {
+  box-shadow: 0 0 20px rgba(74, 222, 128, 0.15);
+}
+
+/* Number font for scores */
+.score-font {
+  font-family: var(--font-display);
+  letter-spacing: -1px;
+}
