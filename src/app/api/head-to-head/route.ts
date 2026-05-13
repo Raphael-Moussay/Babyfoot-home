@@ -10,7 +10,7 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: 'Paramètres manquants' }, { status: 400 })
   }
 
-  const supabase = createClient()
+  const supabase = createClient() as any
 
   // Find all matches where both players appear
   // We do this by finding matches containing player A, then filtering for those also containing player B
