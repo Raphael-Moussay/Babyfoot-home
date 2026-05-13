@@ -99,12 +99,12 @@ async function recalculateAllStats(admin: ReturnType<typeof createAdminClient>) 
     const teamA = teams.find(t => t.team === 'A')
     const teamB = teams.find(t => t.team === 'B')
 
-    const teamAPlayers = (teamA?.match_players ?? []).map((p: any) => p.player_id)
-    const teamBPlayers = (teamB?.match_players ?? []).map((p: any) => p.player_id)
+    const teamAPlayers = (teamA?.match_players ?? []).map((p: any) => p.player_id) as string[]
+    const teamBPlayers = (teamB?.match_players ?? []).map((p: any) => p.player_id) as string[]
 
     const teamAWon = team_a_score > team_b_score
-    const teamAWithElo = teamAPlayers.map(pid => ({ id: pid, elo: statsMap.get(pid)?.elo ?? 1000 }))
-    const teamBWithElo = teamBPlayers.map(pid => ({ id: pid, elo: statsMap.get(pid)?.elo ?? 1000 }))
+    const teamAWithElo = teamAPlayers.map((pid: string) => ({ id: pid, elo: statsMap.get(pid)?.elo ?? 1000 }))
+    const teamBWithElo = teamBPlayers.map((pid: string) => ({ id: pid, elo: statsMap.get(pid)?.elo ?? 1000 }))
 
     const eloDeltas = calculateEloDeltas(teamAWithElo, teamBWithElo, teamAWon)
 
@@ -122,7 +122,7 @@ async function recalculateAllStats(admin: ReturnType<typeof createAdminClient>) 
     const totalGoalsB = sets.reduce((s: number, m: any) => s + m.team_b_goals, 0)
     const fannySets = sets.filter((s: any) => s.is_fanny)
 
-    const allPlayerIds = [...teamAPlayers, ...teamBPlayers]
+    const allPlayerIds = [...teamAPlayers, ...teamBPlayers] as string[]
 
     for (const pid of allPlayerIds) {
       const isTeamA = teamAPlayers.includes(pid)
