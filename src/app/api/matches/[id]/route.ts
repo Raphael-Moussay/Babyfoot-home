@@ -108,7 +108,7 @@ async function recalculateAllStats(admin: ReturnType<typeof createAdminClient>) 
 
     const eloDeltas = calculateEloDeltas(teamAWithElo, teamBWithElo, teamAWon)
 
-    for (const [pid, d] of eloDeltas.entries()) {
+    Array.from(eloDeltas.entries()).forEach(([pid, d]) => {
       eloHistoryInserts.push({
         match_id: match.id,
         player_id: pid,
@@ -116,7 +116,7 @@ async function recalculateAllStats(admin: ReturnType<typeof createAdminClient>) 
         elo_after: d.after,
         delta: d.delta,
       })
-    }
+    })
 
     const totalGoalsA = sets.reduce((s: number, m: any) => s + m.team_a_goals, 0)
     const totalGoalsB = sets.reduce((s: number, m: any) => s + m.team_b_goals, 0)
