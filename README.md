@@ -1,6 +1,6 @@
 # 🏆 Baby-foot Tracker
 
-Application web de suivi de parties de baby-foot avec classement ELO, statistiques avancées, et notifications email.
+Application web de suivi de parties de baby-foot avec classement ELO et statistiques avancees.
 
 ## Stack technique
 
@@ -8,8 +8,7 @@ Application web de suivi de parties de baby-foot avec classement ELO, statistiqu
 |--------|-------|------|
 | Framework | Next.js 14 (App Router) | - |
 | BDD + Auth | Supabase | Free |
-| Email | Resend | Free (3k/mois) |
-| Hébergement | Vercel | Free |
+| Hebergement | Vercel | Free |
 
 ---
 
@@ -19,9 +18,8 @@ Application web de suivi de parties de baby-foot avec classement ELO, statistiqu
 
 ```bash
 git clone <your-repo>
-cd foosball-app
+cd Baby_menil
 npm install
-cp .env.local.example .env.local
 ```
 
 ### 2. Configurer Supabase
@@ -65,14 +63,7 @@ GRANT SELECT ON leaderboard TO anon, authenticated;
 3. Authorized redirect URIs : `https://<your-project>.supabase.co/auth/v1/callback`
 4. Copier Client ID et Secret dans Supabase > Auth > Providers > Google
 
-### 4. Configurer Resend
-
-1. Créer un compte sur [resend.com](https://resend.com)
-2. Créer une API key
-3. Dans `src/lib/email.ts`, remplacer `noreply@yourdomain.com` par votre adresse vérifiée
-4. (Sur le plan gratuit, vous pouvez utiliser `onboarding@resend.dev` pour les tests)
-
-### 5. Variables d'environnement
+### 4. Variables d'environnement
 
 Remplir `.env.local` :
 
@@ -80,13 +71,12 @@ Remplir `.env.local` :
 NEXT_PUBLIC_SUPABASE_URL=https://xxxx.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJ...
 SUPABASE_SERVICE_ROLE_KEY=eyJ...
-RESEND_API_KEY=re_...
 NEXT_PUBLIC_APP_URL=http://localhost:3000
 ```
 
 Les clés se trouvent dans Supabase > Settings > API.
 
-### 6. Lancer en développement
+### 5. Lancer en développement
 
 ```bash
 npm run dev
@@ -114,11 +104,11 @@ Ne pas oublier de mettre à jour :
 - **Matchs 1v1 et 2v2** : Avec rôles attaquant/défenseur
 - **Manches** : Score par manche, max 10 buts, calcul automatique du score final
 - **Classement ELO** : Algorithme K=32, moyenne d'équipe pour le 2v2
-- **Streaks** : 🔥 affiché dès 3 victoires consécutives
-- **Fanny** : Détection automatique des 10-0, badges sur les profils
-- **Anti-triche** : Email automatique aux adversaires à chaque match saisi
+- **Streaks** : 🔥 affiche des 3 victoires consecutives
+- **Fanny** : Detection automatique des 10-0, badges sur les profils
+- **Edition de match** : le createur peut modifier score, manches et equipes (recalcul auto)
 - **Head-to-head** : Comparaison directe entre deux joueurs
-- **Litiges** : Bouton pour signaler un score incorrect
+- **Litiges** : Signalement possible, supprime automatiquement si le match est modifie
 
 ---
 
@@ -128,17 +118,20 @@ Ne pas oublier de mettre à jour :
 src/
 ├── app/
 │   ├── api/
-│   │   ├── matches/route.ts        # POST : crée un match + ELO + email
+│   │   ├── matches/route.ts        # POST : cree un match + ELO
+│   │   ├── matches/[id]/route.ts   # PUT : modifie un match + recalcul
 │   │   └── head-to-head/route.ts   # GET : stats H2H
 │   ├── auth/
 │   │   ├── callback/route.ts       # OAuth callback + upsert player
+│   │   ├── onboarding/page.tsx     # Choix du prenom
 │   │   ├── login/page.tsx
 │   │   └── error/page.tsx
 │   ├── leaderboard/page.tsx
 │   ├── matches/
 │   │   ├── page.tsx               # Historique
 │   │   ├── new/page.tsx           # Formulaire
-│   │   └── [id]/page.tsx          # Détail
+│   │   ├── [id]/page.tsx          # Detail
+│   │   └── [id]/edit/page.tsx     # Edition
 │   ├── profile/
 │   │   ├── page.tsx               # Redirect vers /profile/[id]
 │   │   └── [id]/page.tsx
@@ -151,7 +144,6 @@ src/
 │       └── HeadToHeadClient.tsx
 ├── lib/
 │   ├── elo.ts                     # Algorithme ELO + logique jeu
-│   ├── email.ts                   # Template + envoi Resend
 │   ├── supabase/client.ts
 │   ├── supabase/server.ts
 │   └── utils.ts

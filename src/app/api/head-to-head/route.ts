@@ -28,7 +28,9 @@ export async function GET(request: Request) {
     })
   }
 
-  const matchIdsWithA = [...new Set(matchesWithA.map((m: any) => m.match_teams.match_id))]
+  const matchIdsWithA = Array.from(
+    new Set(matchesWithA.map((m: any) => m.match_teams.match_id))
+  )
 
   const { data: matchesWithB } = await supabase
     .from('match_players')
@@ -45,7 +47,9 @@ export async function GET(request: Request) {
     })
   }
 
-  const sharedMatchIds = [...new Set(matchesWithB.map((m: any) => m.match_teams.match_id))]
+  const sharedMatchIds = Array.from(
+    new Set(matchesWithB.map((m: any) => m.match_teams.match_id))
+  )
 
   // Get full match data
   const { data: matches } = await supabase
