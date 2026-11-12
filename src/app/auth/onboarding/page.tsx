@@ -4,116 +4,144 @@ import { Suspense, useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 
-function OnboardingClient() {
+/** Default redirect route after completing onboarding. */
+const DEFAULT_NEXT_ROUTE = '/'
+
+/**
+ * Inner client component handling player display name onboarding.
+ *
+ * @returns {JSX.Element} The rendered onboarding form panel.
+ */
+function OnboardingClient(): JSX.Element {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const next = searchParams.get('next') ?? '/'
+  const nextRoute: string = searchParams.get('next') ?? DEFAULT_NEXT_ROUTE
   const supabase = createClient()
-  const [displayName, setDisplayName] = useState('')
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
+  const [displayName, setDisplayName] = useState<string>('')
+  const [isSubmitting, setIsSubmitting] = useState<boolean>(false)
+  const [validationError, setValidationError] = useState<string>('')
 
   useEffect(() => {
-    let mounted = true
+    let isMounted = true
 
-    async function loadProfile() {
-      const { data } = await supabase.auth.getUser()
-      if (!data.user) {
+    /**
+     * Loads the current user's existing display name or initializes a fallback from metadata.
+     *
+     * @returns {Promise<void>}
+     */
+    async function loadExistingProfile(): Promise<void> {
+      const { data: authData } = await supabase.auth.getUser()
+      if (!authData.user) {
         router.replace('/auth/login')
         return
       }
 
-      const { data: player } = await supabase
+      const { data: playerRecord } = await supabase
         .from('players')
         .select('display_name')
-        .eq('auth_user_id', data.user.id)
+        .eq('auth_user_id', authData.user.id)
         .maybeSingle()
 
-      if (mounted) {
-        const fallbackName = data.user.user_metadata?.full_name
-          ?? data.user.email?.split('@')[0]
-          ?? ''
-        setDisplayName(player?.display_name ?? fallbackName)
+      if (isMounted) {
+        const fallbackDisplayName: string =
+          authData.user.user_metadata?.full_name ??
+          authData.user.email?.split('@')[0] ??
+          ''
+        setDisplayName(playerRecord?.display_name ?? fallbackDisplayName)
       }
     }
 
-    loadProfile()
+    loadExistingProfile()
 
     return () => {
-      mounted = false
+      isMounted = false
     }
   }, [router, supabase])
 
-  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault()
-    setError('')
+  /**
+   * Validates and saves the chosen player display name to Supabase.
+   *
+   * @param {React.FormEvent<HTMLFormElement>} formEvent - Form submission event.
+   * @returns {Promise<void>}
+   */
+  async function handleFormSubmit(
+    formEvent: React.FormEvent<HTMLFormElement>
+  ): Promise<void> {
+    formEvent.preventDefault()
+    setValidationError('')
 
-    const trimmed = displayName.trim()
-    if (!trimmed) {
-      setError('Veuillez saisir un prenom.')
+    const trimmedDisplayName: string = displayName.trim()
+    if (!trimmedDisplayName) {
+      setValidationError('Veuillez saisir un prénom ou pseudo.')
       return
     }
 
-    setLoading(true)
-    const { data } = await supabase.auth.getUser()
-    if (!data.user) {
-      setLoading(false)
+    setIsSubmitting(true)
+    const { data: authData } = await supabase.auth.getUser()
+    if (!authData.user) {
+      setIsSubmitting(false)
       router.replace('/auth/login')
       return
     }
 
     const { error: updateError } = await supabase
       .from('players')
-      .update({ display_name: trimmed })
-      .eq('auth_user_id', data.user.id)
+      .update({ display_name: trimmedDisplayName })
+      .eq('auth_user_id', authData.user.id)
 
     if (updateError) {
-      setLoading(false)
-      setError('Impossible de mettre a jour le prenom.')
+      setIsSubmitting(false)
+      setValidationError('Impossible de mettre à jour le pseudo.')
       return
     }
 
-    router.push(next)
+    router.push(nextRoute)
     router.refresh()
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4">
-      <div className="fixed inset-0 pitch-texture opacity-30" />
-      <div className="fixed inset-0 bg-gradient-radial from-pitch-950/30 via-transparent to-transparent" />
+    <div className="min-h-screen flex items-center justify-center p-4">
+      <div className="panel rounded-3xl p-7 sm:p-9 w-full max-w-md shadow-2xl animate-pop">
+        <div className="flex items-center justify-between border-b border-white/10 pb-4 mb-6">
+          <div>
+            <h1 className="app-title text-xl sm:text-2xl text-white">Profil Joueur</h1>
+            <p className="mt-1 text-xs text-slate-400">
+              Identité affichée sur le tableau de score
+            </p>
+          </div>
+          <div className="rounded-xl bg-emerald-500/10 border border-emerald-500/25 px-3 py-1.5 text-xs font-display font-bold uppercase tracking-widest text-emerald-400">
+            Nouveau
+          </div>
+        </div>
 
-      <div className="relative z-10 card p-10 w-full max-w-sm text-center animate-pop">
-        <div className="text-5xl mb-4">📝</div>
-        <h1 className="font-display text-3xl gradient-text mb-2">Choisir un prenom</h1>
-        <p className="text-gray-500 text-sm mb-8">
-          Ce prenom sera affiche dans le classement et les matchs.
-        </p>
+        <form onSubmit={handleFormSubmit} className="space-y-5">
+          <div>
+            <div className="step-tag">Pseudo / Prénom</div>
+            <label className="mt-2 block text-xs uppercase tracking-wider font-semibold text-slate-400 mb-2">
+              Nom du participant
+            </label>
+            <input
+              type="text"
+              value={displayName}
+              onChange={(event) => setDisplayName(event.target.value)}
+              className="input text-lg tracking-wider"
+              placeholder="Votre prénom ou pseudo"
+              autoComplete="given-name"
+            />
+          </div>
 
-        <form onSubmit={handleSubmit} className="text-left">
-          <label className="text-xs text-gray-500 uppercase tracking-wider mb-2 block">
-            Prenom
-          </label>
-          <input
-            type="text"
-            value={displayName}
-            onChange={(e) => setDisplayName(e.target.value)}
-            className="input w-full"
-            placeholder="Votre prenom"
-            autoComplete="given-name"
-          />
-
-          {error && (
-            <div className="text-red-400 text-xs mt-3">
-              {error}
+          {validationError && (
+            <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/25 text-rose-300 text-xs font-display font-bold uppercase tracking-wider">
+              {validationError}
             </div>
           )}
 
           <button
             type="submit"
-            disabled={loading}
-            className="btn-primary w-full mt-6"
+            disabled={isSubmitting}
+            className="w-full rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-400 px-4 py-4 text-base font-display font-bold uppercase tracking-wider text-slate-950 shadow-lg shadow-emerald-500/20 hover:brightness-110 active:scale-[0.99] transition-all disabled:opacity-50"
           >
-            {loading ? 'Enregistrement...' : 'Continuer'}
+            {isSubmitting ? 'Enregistrement...' : 'Valider et Continuer'}
           </button>
         </form>
       </div>
@@ -121,7 +149,12 @@ function OnboardingClient() {
   )
 }
 
-export default function OnboardingPage() {
+/**
+ * Renders the onboarding page wrapped in a React Suspense boundary.
+ *
+ * @returns {JSX.Element} The rendered onboarding page.
+ */
+export default function OnboardingPage(): JSX.Element {
   return (
     <Suspense fallback={null}>
       <OnboardingClient />

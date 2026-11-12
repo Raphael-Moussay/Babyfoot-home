@@ -5,11 +5,29 @@ import type { Player } from '@/types'
 import { cn } from '@/lib/utils'
 import { Swords } from 'lucide-react'
 
-interface Props {
+/** Multiplier used to compute win percentages. */
+const PERCENTAGE_MULTIPLIER = 100
+
+/** Default fallback percentage when no matches have been played. */
+const DEFAULT_ZERO_PERCENT = 0
+
+/** Icon size in pixels for the central swords icon. */
+const SWORDS_ICON_SIZE_PX = 22
+
+/** Locale string for French date formatting. */
+const FRENCH_DATE_LOCALE = 'fr-FR'
+
+/**
+ * Props for the HeadToHeadClient component.
+ */
+interface HeadToHeadClientProps {
   players: Pick<Player, 'id' | 'display_name' | 'avatar_url'>[]
 }
 
-interface H2HStats {
+/**
+ * Statistical comparison payload returned by the Head-to-Head API endpoint.
+ */
+interface HeadToHeadStatsPayload {
   playerAWins: number
   playerBWins: number
   total: number
@@ -27,148 +45,277 @@ interface H2HStats {
   }[]
 }
 
-export function HeadToHeadClient({ players }: Props) {
-  const [playerA, setPlayerA] = useState('')
-  const [playerB, setPlayerB] = useState('')
-  const [stats, setStats] = useState<H2HStats | null>(null)
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+/**
+ * Descriptor for a head-to-head comparison row.
+ */
+interface ComparisonStatRow {
+  label: string
+  valueA: number | string
+  valueB: number | string
+  numericA: number
+  numericB: number
+}
 
-  async function fetchH2H() {
-    if (!playerA || !playerB || playerA === playerB) {
-      setError('Sélectionnez deux joueurs différents')
+/**
+ * Renders the interactive Head-to-Head player selector and comparison results.
+ *
+ * @param {HeadToHeadClientProps} props - Component properties containing the list of players.
+ * @returns {JSX.Element} The rendered Head-to-Head client interface.
+ */
+export function HeadToHeadClient({ players }: HeadToHeadClientProps): JSX.Element {
+  const [selectedPlayerAId, setSelectedPlayerAId] = useState<string>('')
+  const [selectedPlayerBId, setSelectedPlayerBId] = useState<string>('')
+  const [comparisonStats, setComparisonStats] = useState<HeadToHeadStatsPayload | null>(null)
+  const [isLoading, setIsLoading] = useState<boolean>(false)
+  const [errorMessage, setErrorMessage] = useState<string | null>(null)
+
+  /**
+   * Fetches Head-to-Head statistics between the two selected players.
+   *
+   * @returns {Promise<void>}
+   */
+  async function fetchHeadToHeadStats(): Promise<void> {
+    if (!selectedPlayerAId || !selectedPlayerBId || selectedPlayerAId === selectedPlayerBId) {
+      setErrorMessage('Sélectionnez deux joueurs différents')
       return
     }
-    setLoading(true)
-    setError(null)
+    setIsLoading(true)
+    setErrorMessage(null)
     try {
-      const res = await fetch(`/api/head-to-head?a=${playerA}&b=${playerB}`)
-      const json = await res.json()
-      if (!res.ok) throw new Error(json.error)
-      setStats(json)
-    } catch (e: any) {
-      setError(e.message)
+      const response: Response = await fetch(
+        `/api/head-to-head?a=${selectedPlayerAId}&b=${selectedPlayerBId}`
+      )
+      const responsePayload = await response.json()
+      if (!response.ok) throw new Error(responsePayload.error ?? 'Erreur lors du chargement')
+      setComparisonStats(responsePayload as HeadToHeadStatsPayload)
+    } catch (fetchError: unknown) {
+      const message: string =
+        fetchError instanceof Error ? fetchError.message : 'Erreur inattendue'
+      setErrorMessage(message)
     } finally {
-      setLoading(false)
+      setIsLoading(false)
     }
   }
 
-  const nameA = players.find(p => p.id === playerA)?.display_name ?? 'Joueur A'
-  const nameB = players.find(p => p.id === playerB)?.display_name ?? 'Joueur B'
+  const playerAName: string =
+    players.find((playerItem) => playerItem.id === selectedPlayerAId)?.display_name ?? 'Joueur A'
+  const playerBName: string =
+    players.find((playerItem) => playerItem.id === selectedPlayerBId)?.display_name ?? 'Joueur B'
 
-  const winPctA = stats ? Math.round((stats.playerAWins / stats.total) * 100) : 0
-  const winPctB = stats ? 100 - winPctA : 0
+  const winPercentageA: number =
+    comparisonStats && comparisonStats.total > 0
+      ? Math.round((comparisonStats.playerAWins / comparisonStats.total) * PERCENTAGE_MULTIPLIER)
+      : DEFAULT_ZERO_PERCENT
+  const winPercentageB: number =
+    comparisonStats && comparisonStats.total > 0
+      ? PERCENTAGE_MULTIPLIER - winPercentageA
+      : DEFAULT_ZERO_PERCENT
+
+  const comparisonStatRows: ComparisonStatRow[] = comparisonStats
+    ? [
+        {
+          label: 'Manches Gagnées',
+          valueA: comparisonStats.setsWonA,
+          valueB: comparisonStats.setsWonB,
+          numericA: comparisonStats.setsWonA,
+          numericB: comparisonStats.setsWonB,
+        },
+        {
+          label: 'Meilleur Écart de Manche',
+          valueA: `+${comparisonStats.bestSetDiffA}`,
+          valueB: `+${comparisonStats.bestSetDiffB}`,
+          numericA: comparisonStats.bestSetDiffA,
+          numericB: comparisonStats.bestSetDiffB,
+        },
+        {
+          label: 'Fanny Infligées 🏳️',
+          valueA: comparisonStats.fannyGivenA,
+          valueB: comparisonStats.fannyGivenB,
+          numericA: comparisonStats.fannyGivenA,
+          numericB: comparisonStats.fannyGivenB,
+        },
+      ]
+    : []
 
   return (
-    <div className="space-y-6">
-      {/* Selection */}
-      <div className="card p-6">
-        <div className="grid grid-cols-[1fr,auto,1fr] gap-4 items-end">
+    <div className="space-y-5">
+      {/* Player Selection Panel */}
+      <div className="panel rounded-3xl p-5 sm:p-6 shadow-2xl">
+        <div className="grid grid-cols-1 sm:grid-cols-[1fr,auto,1fr] gap-4 items-end">
           <div>
-            <label className="text-xs text-gray-500 uppercase tracking-wider mb-2 block">Joueur A</label>
-            <select value={playerA} onChange={e => setPlayerA(e.target.value)} className="select">
+            <label className="text-xs font-display font-bold text-emerald-400 uppercase tracking-wider mb-2 block">
+              🟢 Joueur A
+            </label>
+            <select
+              value={selectedPlayerAId}
+              onChange={(event) => setSelectedPlayerAId(event.target.value)}
+              className="select"
+            >
               <option value="">— Sélectionner —</option>
-              {players.filter(p => p.id !== playerB).map(p => (
-                <option key={p.id} value={p.id}>{p.display_name}</option>
-              ))}
+              {players
+                .filter((playerItem) => playerItem.id !== selectedPlayerBId)
+                .map((playerItem) => (
+                  <option key={playerItem.id} value={playerItem.id}>
+                    {playerItem.display_name}
+                  </option>
+                ))}
             </select>
           </div>
-          <div className="pb-2">
-            <Swords className="text-gray-600" size={24} />
+
+          <div className="hidden sm:flex pb-3 items-center justify-center">
+            <div className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-slate-400">
+              <Swords size={SWORDS_ICON_SIZE_PX} />
+            </div>
           </div>
+
           <div>
-            <label className="text-xs text-gray-500 uppercase tracking-wider mb-2 block">Joueur B</label>
-            <select value={playerB} onChange={e => setPlayerB(e.target.value)} className="select">
+            <label className="text-xs font-display font-bold text-rose-400 uppercase tracking-wider mb-2 block">
+              🔴 Joueur B
+            </label>
+            <select
+              value={selectedPlayerBId}
+              onChange={(event) => setSelectedPlayerBId(event.target.value)}
+              className="select"
+            >
               <option value="">— Sélectionner —</option>
-              {players.filter(p => p.id !== playerA).map(p => (
-                <option key={p.id} value={p.id}>{p.display_name}</option>
-              ))}
+              {players
+                .filter((playerItem) => playerItem.id !== selectedPlayerAId)
+                .map((playerItem) => (
+                  <option key={playerItem.id} value={playerItem.id}>
+                    {playerItem.display_name}
+                  </option>
+                ))}
             </select>
           </div>
         </div>
+
         <button
-          onClick={fetchH2H}
-          disabled={loading || !playerA || !playerB}
-          className="btn-primary w-full mt-4"
+          type="button"
+          onClick={fetchHeadToHeadStats}
+          disabled={isLoading || !selectedPlayerAId || !selectedPlayerBId}
+          className="btn-primary w-full mt-5"
         >
-          {loading ? 'Chargement...' : 'Comparer'}
+          {isLoading ? 'Analyse en cours...' : 'Comparer les Joueurs'}
         </button>
-        {error && <p className="text-red-400 text-sm mt-2 text-center">{error}</p>}
+
+        {errorMessage && (
+          <p className="text-rose-400 font-display text-xs uppercase tracking-wider mt-3 text-center">
+            {errorMessage}
+          </p>
+        )}
       </div>
 
-      {/* Results */}
-      {stats && (
-        <div className="space-y-4 animate-slide-up">
-          {stats.total === 0 ? (
-            <div className="card p-8 text-center text-gray-500">
+      {/* Comparison Results */}
+      {comparisonStats && (
+        <div className="space-y-5 animate-slide-up">
+          {comparisonStats.total === 0 ? (
+            <div className="panel rounded-3xl p-8 text-center text-slate-400 shadow-2xl">
               <div className="text-4xl mb-2">🤝</div>
-              Ces joueurs ne se sont jamais affrontés.
+              <p className="font-display uppercase tracking-wider text-sm">
+                Ces joueurs ne se sont jamais affrontés en duel.
+              </p>
             </div>
           ) : (
             <>
-              {/* Win ratio bar */}
-              <div className="card p-6">
-                <div className="flex justify-between text-sm font-semibold mb-3">
-                  <span className="text-pitch-400">{nameA}</span>
-                  <span className="text-gray-500 text-xs">{stats.total} match{stats.total > 1 ? 's' : ''}</span>
-                  <span className="text-red-400">{nameB}</span>
+              {/* Win Ratio Progress Panel */}
+              <div className="panel rounded-3xl p-6 shadow-2xl">
+                <div className="flex justify-between items-center font-display font-bold text-sm sm:text-base uppercase tracking-wider mb-3">
+                  <span className="text-emerald-400">{playerAName}</span>
+                  <span className="step-tag">
+                    {comparisonStats.total} {comparisonStats.total > 1 ? 'Matchs' : 'Match'}
+                  </span>
+                  <span className="text-rose-400">{playerBName}</span>
                 </div>
-                <div className="flex rounded-full overflow-hidden h-8">
-                  <div
-                    className="bg-pitch-600 flex items-center justify-center text-white text-sm font-bold transition-all"
-                    style={{ width: `${winPctA}%` }}
-                  >
-                    {stats.playerAWins}V
-                  </div>
-                  <div
-                    className="bg-red-700 flex items-center justify-center text-white text-sm font-bold transition-all"
-                    style={{ width: `${winPctB}%` }}
-                  >
-                    {stats.playerBWins}V
-                  </div>
+
+                <div className="flex rounded-2xl overflow-hidden h-10 bg-[#0a0d12] border border-white/10 p-1 gap-1">
+                  {winPercentageA > 0 && (
+                    <div
+                      className="bg-gradient-to-r from-emerald-500 to-teal-400 rounded-xl flex items-center justify-center text-slate-950 font-display text-sm font-black transition-all"
+                      style={{ width: `${winPercentageA}%` }}
+                    >
+                      {comparisonStats.playerAWins}V
+                    </div>
+                  )}
+                  {winPercentageB > 0 && (
+                    <div
+                      className="bg-gradient-to-r from-rose-500 to-pink-500 rounded-xl flex items-center justify-center text-white font-display text-sm font-black transition-all"
+                      style={{ width: `${winPercentageB}%` }}
+                    >
+                      {comparisonStats.playerBWins}V
+                    </div>
+                  )}
                 </div>
-                <div className="flex justify-between text-xs text-gray-500 mt-2">
-                  <span>{winPctA}%</span>
-                  <span>{winPctB}%</span>
+
+                <div className="flex justify-between font-display text-xs font-bold text-slate-400 mt-2 score-value">
+                  <span>{winPercentageA}%</span>
+                  <span>{winPercentageB}%</span>
                 </div>
               </div>
 
-              {/* Detailed stats */}
-              <div className="grid grid-cols-3 gap-3">
-                {[
-                  { label: 'Manches gagnées', valueA: stats.setsWonA, valueB: stats.setsWonB },
-                  { label: 'Meilleure manche (écart)', valueA: `+${stats.bestSetDiffA}`, valueB: `+${stats.bestSetDiffB}` },
-                  { label: 'Fanny données', valueA: stats.fannyGivenA, valueB: stats.fannyGivenB },
-                ].map(s => (
-                  <div key={s.label} className="card p-4 col-span-3 flex items-center justify-between">
-                    <span className={cn('font-display text-2xl', typeof s.valueA === 'number' && s.valueA > (s.valueB as number) ? 'text-pitch-400' : 'text-gray-500')}>
-                      {s.valueA}
+              {/* Detailed Comparison Cards */}
+              <div className="panel rounded-3xl p-5 sm:p-6 shadow-2xl space-y-3">
+                <div className="step-tag mb-1">Statistiques Comparées</div>
+                {comparisonStatRows.map((statRow: ComparisonStatRow) => (
+                  <div
+                    key={statRow.label}
+                    className="score-card px-4 py-3 flex items-center justify-between"
+                  >
+                    <span
+                      className={cn(
+                        'score-value text-2xl font-black w-16 text-left',
+                        statRow.numericA > statRow.numericB ? 'text-emerald-400' : 'text-slate-400'
+                      )}
+                    >
+                      {statRow.valueA}
                     </span>
-                    <span className="text-gray-600 text-xs text-center">{s.label}</span>
-                    <span className={cn('font-display text-2xl', typeof s.valueB === 'number' && s.valueB > (s.valueA as number) ? 'text-pitch-400' : 'text-gray-500')}>
-                      {s.valueB}
+                    <span className="font-display text-xs uppercase tracking-wider text-slate-300 text-center">
+                      {statRow.label}
+                    </span>
+                    <span
+                      className={cn(
+                        'score-value text-2xl font-black w-16 text-right',
+                        statRow.numericB > statRow.numericA ? 'text-rose-400' : 'text-slate-400'
+                      )}
+                    >
+                      {statRow.valueB}
                     </span>
                   </div>
                 ))}
               </div>
 
-              {/* Recent matches */}
-              {stats.recentMatches.length > 0 && (
-                <div className="card p-5">
-                  <h3 className="text-gray-400 text-xs uppercase tracking-wider mb-3">Matchs récents</h3>
+              {/* Recent Direct Matches */}
+              {comparisonStats.recentMatches.length > 0 && (
+                <div className="panel rounded-3xl p-5 sm:p-6 shadow-2xl space-y-3">
+                  <div className="step-tag">Confrontations Récentes</div>
                   <div className="space-y-2">
-                    {stats.recentMatches.map((m, i) => {
-                      const aWon = m.teamAScore > m.teamBScore
+                    {comparisonStats.recentMatches.map((recentMatch, matchIndex: number) => {
+                      const didPlayerAWin: boolean =
+                        recentMatch.teamAScore > recentMatch.teamBScore
                       return (
-                        <div key={i} className="flex items-center justify-between text-sm py-1 border-b border-[#2a2d3a] last:border-0">
-                          <span className="text-gray-600 text-xs">{new Date(m.date).toLocaleDateString('fr-FR')}</span>
-                          <div className="font-display text-xl">
-                            <span className={aWon ? 'text-pitch-400' : 'text-gray-500'}>{m.teamAScore}</span>
-                            <span className="text-gray-700 mx-1">-</span>
-                            <span className={!aWon ? 'text-pitch-400' : 'text-gray-500'}>{m.teamBScore}</span>
+                        <div
+                          key={matchIndex}
+                          className="history-row flex items-center justify-between gap-2"
+                        >
+                          <span className="history-time">
+                            {new Date(recentMatch.date).toLocaleDateString(FRENCH_DATE_LOCALE)}
+                          </span>
+                          <div className="score-value font-black text-lg">
+                            <span
+                              className={didPlayerAWin ? 'text-emerald-400' : 'text-slate-500'}
+                            >
+                              {recentMatch.teamAScore}
+                            </span>
+                            <span className="text-slate-600 mx-1.5">:</span>
+                            <span
+                              className={!didPlayerAWin ? 'text-rose-400' : 'text-slate-500'}
+                            >
+                              {recentMatch.teamBScore}
+                            </span>
                           </div>
-                          <div className="text-xs text-gray-600">
-                            {m.sets.map((s, j) => `${s.a}-${s.b}`).join(', ')}
+                          <div className="font-display text-xs text-slate-400 score-value">
+                            {recentMatch.sets
+                              .map((setItem) => `${setItem.a}-${setItem.b}`)
+                              .join(', ')}
                           </div>
                         </div>
                       )

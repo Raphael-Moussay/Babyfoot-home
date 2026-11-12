@@ -1,15 +1,26 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 
-export default async function ProfilePage() {
+/**
+ * Redirects the authenticated user to their personal player profile page,
+ * or to the login/home page if unauthenticated or not yet registered.
+ *
+ * @returns {Promise<never>} Always redirects to the appropriate route.
+ */
+export default async function ProfilePage(): Promise<never> {
   const supabase = createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
 
   if (!user) redirect('/auth/login')
 
-  const { data: player } = await supabase
-    .from('players').select('id').eq('auth_user_id', user.id).single()
+  const { data: playerRecord } = await supabase
+    .from('players')
+    .select('id')
+    .eq('auth_user_id', user.id)
+    .single()
 
-  if (player) redirect(`/profile/${player.id}`)
+  if (playerRecord) redirect(`/profile/${playerRecord.id}`)
   redirect('/')
 }

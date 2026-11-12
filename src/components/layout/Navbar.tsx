@@ -1,16 +1,27 @@
-import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
+import type { Player } from '@/types'
 import { NavbarClient } from './NavbarClient'
 
-export async function Navbar() {
+/**
+ * Server component that fetches the authenticated player's profile and renders the top navigation bar.
+ *
+ * @returns {Promise<JSX.Element>} The rendered navigation bar client component.
+ */
+export async function Navbar(): Promise<JSX.Element> {
   const supabase = createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
 
-  let player = null
+  let authenticatedPlayer: Player | null = null
   if (user) {
-    const { data } = await supabase.from('players').select('*').eq('auth_user_id', user.id).single()
-    player = data
+    const { data: playerRecord } = await supabase
+      .from('players')
+      .select('*')
+      .eq('auth_user_id', user.id)
+      .single()
+    authenticatedPlayer = playerRecord as Player | null
   }
 
-  return <NavbarClient player={player} />
+  return <NavbarClient player={authenticatedPlayer} />
 }

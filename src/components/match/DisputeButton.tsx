@@ -5,52 +5,86 @@ import { createClient } from '@/lib/supabase/client'
 import toast from 'react-hot-toast'
 import { AlertTriangle } from 'lucide-react'
 
-export function DisputeButton({ matchId }: { matchId: string }) {
-  const [loading, setLoading] = useState(false)
-  const [done, setDone] = useState(false)
+/** Icon size in pixels for the dispute warning icon. */
+const DISPUTE_ICON_SIZE_PX = 13
+
+/**
+ * Props for the DisputeButton component.
+ */
+interface DisputeButtonProps {
+  matchId: string
+}
+
+/**
+ * Renders a button allowing an authenticated player to flag a match as disputed.
+ *
+ * @param {DisputeButtonProps} props - Component properties containing the target match ID.
+ * @returns {JSX.Element} The rendered dispute button.
+ */
+export function DisputeButton({ matchId }: DisputeButtonProps): JSX.Element {
+  const [isSubmitting, setIsSubmitting] = useState<boolean>(false)
+  const [isDisputeReported, setIsDisputeReported] = useState<boolean>(false)
   const supabase = createClient()
 
-  async function handleDispute() {
-    if (done) return
-    const reason = window.prompt('Raison du litige (optionnel) :')
-    if (reason === null) return // cancelled
+  /**
+   * Prompts the user for an optional reason and records the match dispute in Supabase.
+   *
+   * @returns {Promise<void>}
+   */
+  async function handleDisputeReport(): Promise<void> {
+    if (isDisputeReported) return
+    const disputeReason: string | null = window.prompt('Raison du litige (optionnel) :')
+    if (disputeReason === null) return
 
-    setLoading(true)
+    setIsSubmitting(true)
     try {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) { toast.error('Connectez-vous pour signaler un litige'); return }
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
+      if (!user) {
+        toast.error('Connectez-vous pour signaler un litige')
+        return
+      }
 
-      const { data: player } = await supabase
-        .from('players').select('id').eq('auth_user_id', user.id).single()
-      if (!player) { toast.error('Joueur introuvable'); return }
+      const { data: playerRecord } = await supabase
+        .from('players')
+        .select('id')
+        .eq('auth_user_id', user.id)
+        .single()
+      if (!playerRecord) {
+        toast.error('Joueur introuvable')
+        return
+      }
 
-      const { error } = await supabase.from('match_disputes').insert({
+      const { error: insertError } = await supabase.from('match_disputes').insert({
         match_id: matchId,
-        reported_by: player.id,
-        reason: reason || null,
+        reported_by: playerRecord.id,
+        reason: disputeReason || null,
       })
 
-      // Also mark match as disputed
       await supabase.from('matches').update({ status: 'disputed' }).eq('id', matchId)
 
-      if (error) throw error
+      if (insertError) throw insertError
       toast.success('Litige signalé !')
-      setDone(true)
-    } catch (e: any) {
-      toast.error(e.message)
+      setIsDisputeReported(true)
+    } catch (disputeError: unknown) {
+      const errorMessage: string =
+        disputeError instanceof Error ? disputeError.message : 'Erreur lors du signalement'
+      toast.error(errorMessage)
     } finally {
-      setLoading(false)
+      setIsSubmitting(false)
     }
   }
 
   return (
     <button
-      onClick={handleDispute}
-      disabled={loading || done}
-      className="flex items-center gap-1 text-gray-600 hover:text-red-400 transition-colors disabled:opacity-50"
+      type="button"
+      onClick={handleDisputeReport}
+      disabled={isSubmitting || isDisputeReported}
+      className="inline-flex items-center gap-1.5 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/25 px-3 py-1.5 font-display font-bold uppercase tracking-wider text-rose-300 transition-all disabled:opacity-50"
     >
-      <AlertTriangle size={12} />
-      {done ? 'Litige signalé' : 'Signaler un litige'}
+      <AlertTriangle size={DISPUTE_ICON_SIZE_PX} />
+      <span>{isDisputeReported ? 'Litige signalé' : 'Signaler un litige'}</span>
     </button>
   )
 }

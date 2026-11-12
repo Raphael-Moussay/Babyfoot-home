@@ -3,11 +3,43 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import toast from 'react-hot-toast'
-import { Plus, Minus, ChevronDown } from 'lucide-react'
+import { Plus } from 'lucide-react'
 import type { Player, MatchType, PlayerRole, SetInput } from '@/types'
 import { cn } from '@/lib/utils'
 
-interface Props {
+/** Maximum number of goals allowed in a single set. */
+const MAX_GOALS_PER_SET = 10
+
+/** Minimum number of goals allowed in a single set. */
+const MIN_GOALS_PER_SET = 0
+
+/** Minimum number of sets required in a match. */
+const MIN_SETS_COUNT = 1
+
+/** Index of the primary player slot in Team A. */
+const PRIMARY_SLOT_INDEX = 0
+
+/**Supported match types in the selector. */
+const AVAILABLE_MATCH_TYPES: readonly MatchType[] = ['1v1', '2v2']
+
+/** Supported team identifiers. */
+const TEAM_IDENTIFIERS = ['A', 'B'] as const
+
+/** Icon size in pixels for the add set button. */
+const ADD_ICON_SIZE_PX = 15
+
+/**
+ * Represents a player slot within a team in the match form.
+ */
+interface TeamPlayerSlot {
+  player_id: string
+  role: PlayerRole
+}
+
+/**
+ * Props for the NewMatchForm component.
+ */
+interface NewMatchFormProps {
   currentPlayer: Player | null
   allPlayers: Pick<Player, 'id' | 'display_name' | 'avatar_url' | 'email'>[]
   mode?: 'create' | 'edit'
@@ -15,26 +47,41 @@ interface Props {
   initialData?: {
     match_type: MatchType
     sets: { team_a_goals: number; team_b_goals: number }[]
-    team_a: TeamPlayer[]
-    team_b: TeamPlayer[]
+    team_a: TeamPlayerSlot[]
+    team_b: TeamPlayerSlot[]
   }
 }
 
-interface TeamPlayer {
-  player_id: string
-  role: PlayerRole
+/**
+ * Score preview accumulator tracking sets won by Team A and Team B.
+ */
+interface MatchScorePreview {
+  teamAWins: number
+  teamBWins: number
 }
 
-export function NewMatchForm({ currentPlayer, allPlayers, mode = 'create', matchId, initialData }: Props) {
+/**
+ * Renders the interactive form for creating or editing a match, styled after Cricket Cut-throat Pro.
+ *
+ * @param {NewMatchFormProps} props - Component properties including player lists and optional edit state.
+ * @returns {JSX.Element} The rendered match creation/edition form.
+ */
+export function NewMatchForm({
+  currentPlayer,
+  allPlayers,
+  mode = 'create',
+  matchId,
+  initialData,
+}: NewMatchFormProps): JSX.Element {
   const router = useRouter()
-  const initialMatchType = initialData?.match_type ?? '1v1'
+  const initialMatchType: MatchType = initialData?.match_type ?? '1v1'
   const [matchType, setMatchType] = useState<MatchType>(initialMatchType)
   const [sets, setSets] = useState<SetInput[]>(
     initialData?.sets?.length
       ? initialData.sets
       : [{ team_a_goals: '', team_b_goals: '' }]
   )
-  const [teamA, setTeamA] = useState<TeamPlayer[]>(
+  const [teamAPlayers, setTeamAPlayers] = useState<TeamPlayerSlot[]>(
     initialData?.team_a?.length
       ? initialData.team_a
       : initialMatchType === '2v2'
@@ -44,7 +91,7 @@ export function NewMatchForm({ currentPlayer, allPlayers, mode = 'create', match
           ]
         : [{ player_id: currentPlayer?.id ?? '', role: 'solo' }]
   )
-  const [teamB, setTeamB] = useState<TeamPlayer[]>(
+  const [teamBPlayers, setTeamBPlayers] = useState<TeamPlayerSlot[]>(
     initialData?.team_b?.length
       ? initialData.team_b
       : initialMatchType === '2v2'
@@ -54,269 +101,464 @@ export function NewMatchForm({ currentPlayer, allPlayers, mode = 'create', match
           ]
         : [{ player_id: '', role: 'solo' }]
   )
-  const [loading, setLoading] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState<boolean>(false)
 
-  // Switch match type
-  function switchMatchType(type: MatchType) {
-    setMatchType(type)
-    if (type === '1v1') {
-      setTeamA([{ player_id: mode === 'create' ? currentPlayer?.id ?? '' : '', role: 'solo' }])
-      setTeamB([{ player_id: '', role: 'solo' }])
+  /**
+   * Switches between 1v1 and 2v2 match formats and resets team slots accordingly.
+   *
+   * @param {MatchType} nextMatchType - The selected match format.
+   * @returns {void}
+   */
+  function switchMatchType(nextMatchType: MatchType): void {
+    setMatchType(nextMatchType)
+    const defaultFirstPlayerId: string = mode === 'create' ? currentPlayer?.id ?? '' : ''
+    if (nextMatchType === '1v1') {
+      setTeamAPlayers([{ player_id: defaultFirstPlayerId, role: 'solo' }])
+      setTeamBPlayers([{ player_id: '', role: 'solo' }])
     } else {
-      setTeamA([
-        { player_id: mode === 'create' ? currentPlayer?.id ?? '' : '', role: 'attacker' },
+      setTeamAPlayers([
+        { player_id: defaultFirstPlayerId, role: 'attacker' },
         { player_id: '', role: 'defender' },
       ])
-      setTeamB([
+      setTeamBPlayers([
         { player_id: '', role: 'attacker' },
         { player_id: '', role: 'defender' },
       ])
     }
   }
 
-  function addSet() {
-    setSets(s => [...s, { team_a_goals: '', team_b_goals: '' }])
+  /**
+   * Appends a new empty set row to the match form.
+   *
+   * @returns {void}
+   */
+  function addSetRow(): void {
+    setSets((previousSets: SetInput[]) => [
+      ...previousSets,
+      { team_a_goals: '', team_b_goals: '' },
+    ])
   }
 
-  function removeSet(i: number) {
-    if (sets.length === 1) return
-    setSets(s => s.filter((_, idx) => idx !== i))
+  /**
+   * Removes a set row by index when more than one set exists.
+   *
+   * @param {number} targetSetIndex - Index of the set row to remove.
+   * @returns {void}
+   */
+  function removeSetRow(targetSetIndex: number): void {
+    if (sets.length <= MIN_SETS_COUNT) return
+    setSets((previousSets: SetInput[]) =>
+      previousSets.filter((_: SetInput, setIndex: number) => setIndex !== targetSetIndex)
+    )
   }
 
-  function updateSet(i: number, field: 'team_a_goals' | 'team_b_goals', value: string) {
-    const num = value === '' ? '' : Math.min(10, Math.max(0, parseInt(value) || 0))
-    setSets(s => s.map((set, idx) => idx === i ? { ...set, [field]: num } : set))
+  /**
+   * Updates the goal count for a given set and team, clamping between 0 and 10.
+   *
+   * @param {number} targetSetIndex - Index of the set being updated.
+   * @param {'team_a_goals' | 'team_b_goals'} goalField - Target team goal field.
+   * @param {string} rawInputValue - Raw input value from the number field.
+   * @returns {void}
+   */
+  function updateSetScore(
+    targetSetIndex: number,
+    goalField: 'team_a_goals' | 'team_b_goals',
+    rawInputValue: string
+  ): void {
+    const parsedGoals: number | '' =
+      rawInputValue === ''
+        ? ''
+        : Math.min(
+            MAX_GOALS_PER_SET,
+            Math.max(MIN_GOALS_PER_SET, parseInt(rawInputValue, 10) || MIN_GOALS_PER_SET)
+          )
+    setSets((previousSets: SetInput[]) =>
+      previousSets.map((matchSet: SetInput, setIndex: number) =>
+        setIndex === targetSetIndex ? { ...matchSet, [goalField]: parsedGoals } : matchSet
+      )
+    )
   }
 
-  function updateTeamPlayer(team: 'A' | 'B', index: number, field: keyof TeamPlayer, value: string) {
-    if (team === 'A') {
-      setTeamA(t => t.map((p, i) => i === index ? { ...p, [field]: value } : p))
+  /**
+   * Updates a player's ID or role within Team A or Team B.
+   *
+   * @param {'A' | 'B'} teamIdentifier - Team identifier ('A' or 'B').
+   * @param {number} slotIndex - Slot index within the team.
+   * @param {keyof TeamPlayerSlot} fieldName - Property to update ('player_id' or 'role').
+   * @param {string} fieldValue - New value to assign.
+   * @returns {void}
+   */
+  function updateTeamPlayerSlot(
+    teamIdentifier: 'A' | 'B',
+    slotIndex: number,
+    fieldName: keyof TeamPlayerSlot,
+    fieldValue: string
+  ): void {
+    if (teamIdentifier === 'A') {
+      setTeamAPlayers((previousTeam: TeamPlayerSlot[]) =>
+        previousTeam.map((slot: TeamPlayerSlot, index: number) =>
+          index === slotIndex ? { ...slot, [fieldName]: fieldValue } : slot
+        )
+      )
     } else {
-      setTeamB(t => t.map((p, i) => i === index ? { ...p, [field]: value } : p))
+      setTeamBPlayers((previousTeam: TeamPlayerSlot[]) =>
+        previousTeam.map((slot: TeamPlayerSlot, index: number) =>
+          index === slotIndex ? { ...slot, [fieldName]: fieldValue } : slot
+        )
+      )
     }
   }
 
-  // Compute score preview
-  const scorePreview = sets.reduce(
-    (acc, s) => {
-      if (s.team_a_goals === '' || s.team_b_goals === '') return acc
-      if (s.team_a_goals > s.team_b_goals) acc.a++
-      else if (s.team_b_goals > s.team_a_goals) acc.b++
-      return acc
+  const scorePreview: MatchScorePreview = sets.reduce<MatchScorePreview>(
+    (accumulator: MatchScorePreview, currentSet: SetInput) => {
+      if (currentSet.team_a_goals === '' || currentSet.team_b_goals === '') return accumulator
+      if (currentSet.team_a_goals > currentSet.team_b_goals) accumulator.teamAWins += 1
+      else if (currentSet.team_b_goals > currentSet.team_a_goals) accumulator.teamBWins += 1
+      return accumulator
     },
-    { a: 0, b: 0 }
+    { teamAWins: 0, teamBWins: 0 }
   )
 
-  function validate(): string | null {
-    // Check players selected
-    const allSelected = [...teamA, ...teamB].every(p => p.player_id)
-    if (!allSelected) return 'Veuillez sélectionner tous les joueurs'
+  /**
+   * Validates the match form before submission.
+   *
+   * @returns {string | null} Error message in French if invalid, or null if valid.
+   */
+  function validateMatchForm(): string | null {
+    const combinedSlots: TeamPlayerSlot[] = [...teamAPlayers, ...teamBPlayers]
+    const areAllPlayersSelected: boolean = combinedSlots.every((slot: TeamPlayerSlot) =>
+      Boolean(slot.player_id)
+    )
+    if (!areAllPlayersSelected) return 'Veuillez sélectionner tous les joueurs'
 
-    // Check no duplicate players
-    const ids = [...teamA, ...teamB].map(p => p.player_id)
-    if (new Set(ids).size !== ids.length) return 'Un joueur ne peut pas être dans les deux équipes'
+    const selectedPlayerIds: string[] = combinedSlots.map(
+      (slot: TeamPlayerSlot) => slot.player_id
+    )
+    if (new Set(selectedPlayerIds).size !== selectedPlayerIds.length) {
+      return 'Un joueur ne peut pas être dans les deux équipes'
+    }
 
-    // Check sets
-    for (const set of sets) {
-      if (set.team_a_goals === '' || set.team_b_goals === '') return 'Remplissez tous les scores de manches'
-      if (set.team_a_goals === set.team_b_goals) return 'Un match nul par manche n\'est pas possible'
-      if (set.team_a_goals !== 10 && set.team_b_goals !== 10) return 'Au moins une équipe doit marquer 10 buts par manche'
+    for (const matchSet of sets) {
+      if (matchSet.team_a_goals === '' || matchSet.team_b_goals === '') {
+        return 'Remplissez tous les scores de manches'
+      }
+      if (matchSet.team_a_goals === matchSet.team_b_goals) {
+        return "Un match nul par manche n'est pas possible"
+      }
+      if (
+        matchSet.team_a_goals !== MAX_GOALS_PER_SET &&
+        matchSet.team_b_goals !== MAX_GOALS_PER_SET
+      ) {
+        return 'Au moins une équipe doit marquer 10 buts par manche'
+      }
     }
 
     return null
   }
 
-  async function handleSubmit() {
-    const err = validate()
-    if (err) { toast.error(err); return }
+  /**
+   * Submits the validated match data to the API endpoint.
+   *
+   * @returns {Promise<void>}
+   */
+  async function handleSubmitMatch(): Promise<void> {
+    const validationError: string | null = validateMatchForm()
+    if (validationError) {
+      toast.error(validationError)
+      return
+    }
 
-    setLoading(true)
+    setIsSubmitting(true)
     try {
-      const payload = {
+      const requestPayload = {
         match_type: matchType,
         sets: sets as { team_a_goals: number; team_b_goals: number }[],
-        team_a: teamA,
-        team_b: teamB,
+        team_a: teamAPlayers,
+        team_b: teamBPlayers,
       }
 
-      const endpoint = mode === 'edit' && matchId
-        ? `/api/matches/${matchId}`
-        : '/api/matches'
+      const apiEndpoint: string =
+        mode === 'edit' && matchId ? `/api/matches/${matchId}` : '/api/matches'
 
-      const res = await fetch(endpoint, {
+      const response: Response = await fetch(apiEndpoint, {
         method: mode === 'edit' ? 'PUT' : 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
+        body: JSON.stringify(requestPayload),
       })
 
-      const json = await res.json()
-      if (!res.ok) throw new Error(json.error ?? 'Erreur serveur')
+      const responseData = await response.json()
+      if (!response.ok) throw new Error(responseData.error ?? 'Erreur serveur')
 
       toast.success(mode === 'edit' ? 'Match mis à jour ! ✅' : 'Match enregistré ! 🏆')
-      const targetId = mode === 'edit' && matchId ? matchId : json.matchId
-      router.push(`/matches/${targetId}`)
-    } catch (e: any) {
-      toast.error(e.message)
+      const destinationMatchId: string =
+        mode === 'edit' && matchId ? matchId : responseData.matchId
+      router.push(`/matches/${destinationMatchId}`)
+    } catch (submissionError: unknown) {
+      const errorMessage: string =
+        submissionError instanceof Error ? submissionError.message : 'Erreur inattendue'
+      toast.error(errorMessage)
     } finally {
-      setLoading(false)
+      setIsSubmitting(false)
     }
   }
 
-  const otherPlayers = allPlayers.filter(p => p.id !== currentPlayer?.id)
-
   return (
     <div className="space-y-6 animate-slide-up">
-      {/* Match type */}
-      <div className="card p-6">
-        <h2 className="font-semibold mb-4 text-gray-300">Type de match</h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          {(['1v1', '2v2'] as MatchType[]).map(type => (
+      {/* Match Format Selector */}
+      <div>
+        <div className="step-tag">Format</div>
+        <label className="mt-2 block text-xs uppercase tracking-wider font-semibold text-slate-400">
+          Mode de la Rencontre
+        </label>
+        <div className="mt-3 grid grid-cols-2 gap-3">
+          {AVAILABLE_MATCH_TYPES.map((typeOption: MatchType) => (
             <button
-              key={type}
-              onClick={() => switchMatchType(type)}
+              key={typeOption}
+              type="button"
+              onClick={() => switchMatchType(typeOption)}
               className={cn(
-                'py-3 rounded-xl font-display text-2xl tracking-wider transition-all border',
-                matchType === type
-                  ? 'bg-pitch-700/30 border-pitch-600 text-pitch-400 glow-green'
-                  : 'border-[#2a2d3a] text-gray-500 hover:border-[#3a3d4a]'
+                'py-3.5 rounded-2xl font-display font-bold text-xl tracking-widest uppercase transition-all border',
+                matchType === typeOption
+                  ? 'bg-emerald-500/15 border-emerald-500/50 text-emerald-300 shadow-lg shadow-emerald-500/10'
+                  : 'bg-white/[0.03] border-white/10 text-slate-400 hover:bg-white/[0.06] hover:text-white'
               )}
             >
-              {type}
+              {typeOption}
             </button>
           ))}
         </div>
       </div>
 
-      {/* Teams */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {(['A', 'B'] as const).map(team => {
-          const players = team === 'A' ? teamA : teamB
-          return (
-            <div key={team} className={cn(
-              'card p-5',
-              team === 'A' ? 'border-pitch-800/50' : 'border-red-900/30'
-            )}>
-              <h3 className="font-display text-xl mb-4" style={{ color: team === 'A' ? '#4ade80' : '#f87171' }}>
-                ÉQUIPE {team}
-              </h3>
-              <div className="space-y-3">
-                {players.map((p, i) => (
-                  <div key={i} className="space-y-2">
-                    <select
-                      value={p.player_id}
-                      onChange={e => updateTeamPlayer(team, i, 'player_id', e.target.value)}
-                      className="select text-sm"
-                      disabled={mode === 'create' && team === 'A' && i === 0 && !!currentPlayer}
-                    >
-                      <option value="">— Joueur —</option>
-                      {/* Current player always first in team A slot 0 */}
-                      {team === 'A' && i === 0 && currentPlayer && (
-                        <option value={currentPlayer.id}>{currentPlayer.display_name} (vous)</option>
-                      )}
-                      {(() => {
-                        const selectedIds = [...teamA, ...teamB]
-                          .map(tp => tp.player_id)
-                          .filter(Boolean)
-                        const usedIds = selectedIds.filter(id => id !== p.player_id)
-                        return allPlayers
-                          .filter(ap => {
-                            if (team === 'A' && i === 0 && currentPlayer) return false
-                            return !usedIds.includes(ap.id)
-                          })
-                          .map(ap => (
-                            <option key={ap.id} value={ap.id}>{ap.display_name}</option>
-                          ))
-                      })()}
-                    </select>
-                    {matchType === '2v2' && (
+      {/* Teams Configuration */}
+      <div>
+        <div className="step-tag">Joueurs</div>
+        <label className="mt-2 block text-xs uppercase tracking-wider font-semibold text-slate-400">
+          Composition des Équipes
+        </label>
+
+        <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-4">
+          {TEAM_IDENTIFIERS.map((teamSide: 'A' | 'B') => {
+            const teamSlots: TeamPlayerSlot[] =
+              teamSide === 'A' ? teamAPlayers : teamBPlayers
+            const isTeamA: boolean = teamSide === 'A'
+
+            return (
+              <div
+                key={teamSide}
+                className={cn(
+                  'p-4 rounded-2xl border space-y-3',
+                  isTeamA
+                    ? 'bg-emerald-500/[0.04] border-emerald-500/20'
+                    : 'bg-rose-500/[0.04] border-rose-500/20'
+                )}
+              >
+                <div
+                  className={cn(
+                    'flex items-center gap-2 font-display font-bold text-sm uppercase tracking-wider',
+                    isTeamA ? 'text-emerald-400' : 'text-rose-400'
+                  )}
+                >
+                  <span>{isTeamA ? '🟢' : '🔴'}</span>
+                  <span>Équipe {teamSide}</span>
+                </div>
+
+                <div className="space-y-3">
+                  {teamSlots.map((slotItem: TeamPlayerSlot, slotIndex: number) => (
+                    <div key={slotIndex} className="space-y-2">
                       <select
-                        value={p.role}
-                        onChange={e => updateTeamPlayer(team, i, 'role', e.target.value)}
-                        className="select text-xs"
+                        value={slotItem.player_id}
+                        onChange={(event) =>
+                          updateTeamPlayerSlot(
+                            teamSide,
+                            slotIndex,
+                            'player_id',
+                            event.target.value
+                          )
+                        }
+                        className="select text-sm"
+                        disabled={
+                          mode === 'create' &&
+                          isTeamA &&
+                          slotIndex === PRIMARY_SLOT_INDEX &&
+                          Boolean(currentPlayer)
+                        }
                       >
-                        <option value="attacker">⚔️ Attaquant</option>
-                        <option value="defender">🛡️ Défenseur</option>
+                        <option value="">— Choisir un joueur —</option>
+                        {isTeamA && slotIndex === PRIMARY_SLOT_INDEX && currentPlayer && (
+                          <option value={currentPlayer.id}>
+                            {currentPlayer.display_name} (vous)
+                          </option>
+                        )}
+                        {(() => {
+                          const allSelectedIds: string[] = [...teamAPlayers, ...teamBPlayers]
+                            .map((teamPlayer: TeamPlayerSlot) => teamPlayer.player_id)
+                            .filter(Boolean)
+                          const otherUsedIds: string[] = allSelectedIds.filter(
+                            (id: string) => id !== slotItem.player_id
+                          )
+                          return allPlayers
+                            .filter((candidatePlayer) => {
+                              if (isTeamA && slotIndex === PRIMARY_SLOT_INDEX && currentPlayer) {
+                                return false
+                              }
+                              return !otherUsedIds.includes(candidatePlayer.id)
+                            })
+                            .map((candidatePlayer) => (
+                              <option key={candidatePlayer.id} value={candidatePlayer.id}>
+                                {candidatePlayer.display_name}
+                              </option>
+                            ))
+                        })()}
                       </select>
-                    )}
-                  </div>
-                ))}
+
+                      {matchType === '2v2' && (
+                        <select
+                          value={slotItem.role}
+                          onChange={(event) =>
+                            updateTeamPlayerSlot(
+                              teamSide,
+                              slotIndex,
+                              'role',
+                              event.target.value
+                            )
+                          }
+                          className="select text-xs py-2"
+                        >
+                          <option value="attacker">⚔️ Attaquant</option>
+                          <option value="defender">🛡️ Défenseur</option>
+                        </select>
+                      )}
+                    </div>
+                  ))}
+                </div>
               </div>
-            </div>
-          )
-        })}
+            )
+          })}
+        </div>
       </div>
 
-      {/* Sets */}
-      <div className="card p-6">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="font-semibold text-gray-300">Manches <span className="text-gray-600 text-xs sm:text-sm font-normal">(max 10 buts)</span></h2>
-          <button onClick={addSet} className="btn-ghost flex items-center gap-1 text-sm text-pitch-400">
-            <Plus size={16} /> Ajouter
+      {/* Sets Score Input */}
+      <div>
+        <div className="flex items-center justify-between">
+          <div>
+            <div className="step-tag">Manches</div>
+            <label className="mt-2 block text-xs uppercase tracking-wider font-semibold text-slate-400">
+              Scores par Manche (max 10 buts)
+            </label>
+          </div>
+          <button
+            type="button"
+            onClick={addSetRow}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-xs font-display font-bold uppercase tracking-wider text-emerald-400 border border-white/10 transition-all active:scale-95"
+          >
+            <Plus size={ADD_ICON_SIZE_PX} /> Ajouter Manche
           </button>
         </div>
 
-        <div className="space-y-3">
-          {sets.map((set, i) => {
-            const aGoals = set.team_a_goals === '' ? null : Number(set.team_a_goals)
-            const bGoals = set.team_b_goals === '' ? null : Number(set.team_b_goals)
-            const aWins = aGoals !== null && bGoals !== null && aGoals > bGoals
-            const bWins = aGoals !== null && bGoals !== null && bGoals > aGoals
-            const isFanny = (aGoals === 10 && bGoals === 0) || (aGoals === 0 && bGoals === 10)
+        <div className="mt-3 space-y-2.5">
+          {sets.map((matchSet: SetInput, setIndex: number) => {
+            const teamAGoals: number | null =
+              matchSet.team_a_goals === '' ? null : Number(matchSet.team_a_goals)
+            const teamBGoals: number | null =
+              matchSet.team_b_goals === '' ? null : Number(matchSet.team_b_goals)
+            const didTeamAWinSet: boolean =
+              teamAGoals !== null && teamBGoals !== null && teamAGoals > teamBGoals
+            const didTeamBWinSet: boolean =
+              teamAGoals !== null && teamBGoals !== null && teamBGoals > teamAGoals
+            const isFannySet: boolean =
+              (teamAGoals === MAX_GOALS_PER_SET && teamBGoals === MIN_GOALS_PER_SET) ||
+              (teamAGoals === MIN_GOALS_PER_SET && teamBGoals === MAX_GOALS_PER_SET)
 
             return (
-              <div key={i} className="flex flex-wrap items-center gap-3">
-                <span className="text-gray-600 text-xs sm:text-sm w-16 sm:w-20 shrink-0">Manche {i + 1}</span>
-                <input
-                  type="number" min="0" max="10"
-                  value={set.team_a_goals}
-                  onChange={e => updateSet(i, 'team_a_goals', e.target.value)}
-                  className={cn('input text-center w-14 sm:w-16', aWins && 'border-pitch-600 text-pitch-400')}
-                  placeholder="0"
-                />
-                <span className="text-gray-600 font-display text-xl">-</span>
-                <input
-                  type="number" min="0" max="10"
-                  value={set.team_b_goals}
-                  onChange={e => updateSet(i, 'team_b_goals', e.target.value)}
-                  className={cn('input text-center w-14 sm:w-16', bWins && 'border-red-600 text-red-400')}
-                  placeholder="0"
-                />
-                {isFanny && <span title="FANNY!" className="text-xl">🏳️</span>}
-                {sets.length > 1 && (
-                  <button onClick={() => removeSet(i)} className="btn-ghost p-1 text-gray-600 hover:text-red-400">
-                    <Minus size={16} />
-                  </button>
-                )}
+              <div
+                key={setIndex}
+                className="p-3 rounded-2xl bg-white/[0.03] border border-white/[0.07] flex items-center justify-between gap-2 sm:gap-3"
+              >
+                <div className="number-pill w-14 sm:w-20 shrink-0 text-xs">
+                  M{setIndex + 1}
+                </div>
+
+                <div className="flex items-center gap-2 sm:gap-3 flex-1 justify-center">
+                  <input
+                    type="number"
+                    min={MIN_GOALS_PER_SET}
+                    max={MAX_GOALS_PER_SET}
+                    value={matchSet.team_a_goals}
+                    onChange={(event) =>
+                      updateSetScore(setIndex, 'team_a_goals', event.target.value)
+                    }
+                    className={cn(
+                      'input text-center w-16 sm:w-20 text-lg font-bold score-value py-2.5',
+                      didTeamAWinSet && 'border-emerald-500/60 text-emerald-400 bg-emerald-500/10'
+                    )}
+                    placeholder="0"
+                  />
+                  <span className="font-display font-bold text-slate-500 text-lg">:</span>
+                  <input
+                    type="number"
+                    min={MIN_GOALS_PER_SET}
+                    max={MAX_GOALS_PER_SET}
+                    value={matchSet.team_b_goals}
+                    onChange={(event) =>
+                      updateSetScore(setIndex, 'team_b_goals', event.target.value)
+                    }
+                    className={cn(
+                      'input text-center w-16 sm:w-20 text-lg font-bold score-value py-2.5',
+                      didTeamBWinSet && 'border-rose-500/60 text-rose-400 bg-rose-500/10'
+                    )}
+                    placeholder="0"
+                  />
+                </div>
+
+                <div className="flex items-center gap-2">
+                  {isFannySet && (
+                    <span
+                      title="Fanny 10-0 !"
+                      className="badge bg-amber-500/15 text-amber-300 border border-amber-500/30"
+                    >
+                      🏳️
+                    </span>
+                  )}
+                  {sets.length > MIN_SETS_COUNT && (
+                    <button
+                      type="button"
+                      onClick={() => removeSetRow(setIndex)}
+                      className="player-remove-btn"
+                      title="Supprimer cette manche"
+                      aria-label="Supprimer la manche"
+                    >
+                      ×
+                    </button>
+                  )}
+                </div>
               </div>
             )
           })}
         </div>
 
-        {/* Score preview */}
-        {(scorePreview.a > 0 || scorePreview.b > 0) && (
-          <div className="mt-4 pt-4 border-t border-[#2a2d3a] text-center">
-            <span className="text-gray-500 text-sm">Score final : </span>
-            <span className="font-display text-2xl sm:text-3xl">
-              <span className="text-pitch-400">{scorePreview.a}</span>
-              <span className="text-gray-600 mx-2">-</span>
-              <span className="text-red-400">{scorePreview.b}</span>
+        {/* Live Match Score Preview */}
+        {(scorePreview.teamAWins > 0 || scorePreview.teamBWins > 0) && (
+          <div className="mt-4 p-4 rounded-2xl bg-amber-500/5 border border-amber-500/20 flex items-center justify-between">
+            <span className="font-display font-bold text-xs uppercase tracking-wider text-amber-300">
+              ⚡ Score Final Prévisionnel
             </span>
+            <div className="font-display text-2xl font-black score-value">
+              <span className="text-emerald-400">{scorePreview.teamAWins}</span>
+              <span className="text-slate-500 mx-2">-</span>
+              <span className="text-rose-400">{scorePreview.teamBWins}</span>
+            </div>
           </div>
         )}
       </div>
 
-      {/* Submit */}
+      {/* Submit Button */}
       <button
-        onClick={handleSubmit}
-        disabled={loading}
-        className="btn-primary w-full py-4 text-base sm:text-lg font-display tracking-wider"
+        type="button"
+        onClick={handleSubmitMatch}
+        disabled={isSubmitting}
+        className="w-full rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-400 px-4 py-4 text-base sm:text-lg font-display font-bold uppercase tracking-wider text-slate-950 shadow-lg shadow-emerald-500/20 hover:brightness-110 active:scale-[0.99] transition-all disabled:opacity-50"
       >
-        {loading ? (
-          <span className="flex items-center justify-center gap-2">
-            <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-            Enregistrement...
-          </span>
-        ) : '⚽ ENREGISTRER LE MATCH'}
+        {isSubmitting ? 'Enregistrement en cours...' : 'Enregistrer le Match'}
       </button>
     </div>
   )
