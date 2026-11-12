@@ -472,13 +472,13 @@ export function NewMatchForm({
             return (
               <div
                 key={setIndex}
-                className="p-3 rounded-2xl bg-white/[0.03] border border-white/[0.07] flex items-center justify-between gap-2 sm:gap-3"
+                className="p-2.5 sm:p-3 rounded-2xl bg-white/[0.03] border border-white/[0.07] flex items-center justify-between gap-1.5 sm:gap-3"
               >
-                <div className="number-pill w-14 sm:w-20 shrink-0 text-xs">
+                <div className="number-pill w-11 sm:w-20 shrink-0 text-[11px] sm:text-xs px-1.5">
                   M{setIndex + 1}
                 </div>
 
-                <div className="flex items-center gap-2 sm:gap-3 flex-1 justify-center">
+                <div className="flex items-center gap-1.5 sm:gap-3 flex-1 justify-center">
                   <input
                     type="number"
                     min={MIN_GOALS_PER_SET}
@@ -488,12 +488,12 @@ export function NewMatchForm({
                       updateSetScore(setIndex, 'team_a_goals', event.target.value)
                     }
                     className={cn(
-                      'input text-center w-16 sm:w-20 text-lg font-bold score-value py-2.5',
+                      'input text-center w-14 sm:w-20 px-2 sm:px-4 text-base sm:text-lg font-bold score-value py-2 sm:py-2.5',
                       didTeamAWinSet && 'border-emerald-500/60 text-emerald-400 bg-emerald-500/10'
                     )}
                     placeholder="0"
                   />
-                  <span className="font-display font-bold text-slate-500 text-lg">:</span>
+                  <span className="font-display font-bold text-slate-500 text-base sm:text-lg">:</span>
                   <input
                     type="number"
                     min={MIN_GOALS_PER_SET}
@@ -503,18 +503,18 @@ export function NewMatchForm({
                       updateSetScore(setIndex, 'team_b_goals', event.target.value)
                     }
                     className={cn(
-                      'input text-center w-16 sm:w-20 text-lg font-bold score-value py-2.5',
+                      'input text-center w-14 sm:w-20 px-2 sm:px-4 text-base sm:text-lg font-bold score-value py-2 sm:py-2.5',
                       didTeamBWinSet && 'border-rose-500/60 text-rose-400 bg-rose-500/10'
                     )}
                     placeholder="0"
                   />
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
                   {isFannySet && (
                     <span
                       title="Fanny 10-0 !"
-                      className="badge bg-amber-500/15 text-amber-300 border border-amber-500/30"
+                      className="badge bg-amber-500/15 text-amber-300 border border-amber-500/30 px-1.5 sm:px-2.5"
                     >
                       🏳️
                     </span>
@@ -523,7 +523,7 @@ export function NewMatchForm({
                     <button
                       type="button"
                       onClick={() => removeSetRow(setIndex)}
-                      className="player-remove-btn"
+                      className="player-remove-btn w-9 h-9 sm:w-[42px] sm:h-[42px]"
                       title="Supprimer cette manche"
                       aria-label="Supprimer la manche"
                     >

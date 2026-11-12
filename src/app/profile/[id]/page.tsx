@@ -133,38 +133,38 @@ export default async function PlayerProfilePage({
   return (
     <div className="min-h-screen">
       <Navbar />
-      <main className="max-w-3xl mx-auto p-3 sm:p-6 space-y-5">
+      <main className="max-w-3xl mx-auto p-3 sm:p-6 space-y-4 sm:space-y-5">
         {/* Profile Header Panel */}
-        <div className="panel rounded-3xl p-6 sm:p-8 shadow-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-6">
-          <div className="flex items-center gap-5">
+        <div className="panel rounded-3xl p-4 sm:p-8 shadow-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-4 sm:gap-6">
+          <div className="flex items-center gap-3.5 sm:gap-5 min-w-0">
             {player.avatar_url ? (
               <Image
                 src={player.avatar_url}
                 alt={player.display_name}
                 width={PROFILE_AVATAR_SIZE_PX}
                 height={PROFILE_AVATAR_SIZE_PX}
-                className="rounded-2xl border-2 border-emerald-500/40"
+                className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl border-2 border-emerald-500/40 shrink-0"
               />
             ) : (
-              <div className="w-20 h-20 rounded-2xl bg-emerald-500/10 border-2 border-emerald-500/35 flex items-center justify-center font-display font-black text-4xl text-emerald-400">
+              <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-emerald-500/10 border-2 border-emerald-500/35 flex items-center justify-center font-display font-black text-3xl sm:text-4xl text-emerald-400 shrink-0">
                 {player.display_name[0]}
               </div>
             )}
 
-            <div>
+            <div className="min-w-0">
               <div className="step-tag mb-1.5">Profil Joueur</div>
-              <div className="flex items-center gap-2">
-                <h1 className="app-title text-2xl sm:text-3xl text-white">
+              <div className="flex items-center gap-2 min-w-0">
+                <h1 className="app-title text-xl sm:text-3xl text-white truncate">
                   {player.display_name}
                 </h1>
                 {playerStats?.last_3_wins && (
-                  <span className="text-2xl animate-flame" title="En série de victoires">
+                  <span className="text-xl sm:text-2xl animate-flame shrink-0" title="En série de victoires">
                     🔥
                   </span>
                 )}
               </div>
-              <div className="mt-2 flex items-baseline gap-2">
-                <span className="score-value font-black text-4xl sm:text-5xl text-amber-300">
+              <div className="mt-1.5 sm:mt-2 flex items-baseline gap-2">
+                <span className="score-value font-black text-3xl sm:text-5xl text-amber-300">
                   {playerStats?.elo ?? DEFAULT_INITIAL_ELO}
                 </span>
                 <span className="font-display text-xs uppercase tracking-widest text-emerald-400 font-bold">
@@ -174,8 +174,8 @@ export default async function PlayerProfilePage({
             </div>
           </div>
 
-          <div className="score-card px-5 py-3.5 text-left sm:text-right self-start sm:self-center">
-            <div className="text-[11px] font-display uppercase tracking-widest text-slate-400 mb-1">
+          <div className="score-card px-4 sm:px-5 py-3 sm:py-3.5 flex sm:block items-center justify-between w-full sm:w-auto text-left sm:text-right self-start sm:self-center">
+            <div className="text-[11px] font-display uppercase tracking-widest text-slate-400 sm:mb-1">
               Série Actuelle
             </div>
             {currentStreak > DEFAULT_ZERO_STAT ? (
@@ -195,13 +195,13 @@ export default async function PlayerProfilePage({
         </div>
 
         {/* Summary Stats Grid */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5 sm:gap-3">
           {summaryStatCards.map((statCard: ProfileStatCardItem) => (
-            <div key={statCard.label} className="score-card text-center py-4 px-3">
+            <div key={statCard.label} className="score-card text-center py-3.5 sm:py-4 px-2.5 sm:px-3">
               <div className="text-[11px] font-display uppercase tracking-widest text-slate-400">
                 {statCard.label}
               </div>
-              <div className={`mt-1.5 score-value text-3xl font-black ${statCard.colorClass}`}>
+              <div className={`mt-1.5 score-value text-2xl sm:text-3xl font-black ${statCard.colorClass}`}>
                 {statCard.value}
               </div>
             </div>
@@ -210,12 +210,12 @@ export default async function PlayerProfilePage({
 
         {/* Fanny Statistics Panel */}
         {(fannyGivenCount > DEFAULT_ZERO_STAT || fannyTakenCount > DEFAULT_ZERO_STAT) && (
-          <div className="panel rounded-3xl p-5 sm:p-6 shadow-2xl">
-            <div className="flex items-center justify-between mb-4">
+          <div className="panel rounded-3xl p-4 sm:p-6 shadow-2xl">
+            <div className="flex items-center justify-between mb-3 sm:mb-4">
               <div className="step-tag">Bilan des Fanny (10-0)</div>
               <span className="text-lg">🏳️</span>
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
               <div className="p-4 rounded-2xl bg-amber-500/5 border border-amber-500/20 flex items-center justify-between">
                 <div>
                   <div className="font-display font-bold text-amber-300 text-xs uppercase tracking-wider">
@@ -245,7 +245,7 @@ export default async function PlayerProfilePage({
 
         {/* Recent ELO History Panel */}
         {recentHistoryList.length > DEFAULT_ZERO_STAT && (
-          <div className="panel rounded-3xl p-5 sm:p-6 shadow-2xl">
+          <div className="panel rounded-3xl p-4 sm:p-6 shadow-2xl">
             <div className="flex items-center justify-between mb-4">
               <div className="step-tag">Historique ELO Récent</div>
               <span className="text-xs font-display uppercase tracking-wider text-slate-400">
@@ -262,12 +262,12 @@ export default async function PlayerProfilePage({
                   <div className="history-time">
                     {formatDate(historyEntry.matches?.created_at ?? historyEntry.created_at)}
                   </div>
-                  <div className="flex items-center gap-3 text-sm font-display score-value">
+                  <div className="flex items-center gap-2 sm:gap-3 text-xs sm:text-sm font-display score-value">
                     <span className="text-slate-500">{historyEntry.elo_before}</span>
                     <span className="text-slate-600">→</span>
                     <span className="font-bold text-slate-200">{historyEntry.elo_after}</span>
                     <span
-                      className={`font-black w-12 text-right ${eloDeltaColor(
+                      className={`font-black w-10 sm:w-12 text-right ${eloDeltaColor(
                         historyEntry.delta
                       )}`}
                     >

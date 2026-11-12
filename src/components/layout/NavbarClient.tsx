@@ -7,7 +7,7 @@ import { useRouter } from 'next/navigation'
 import type { Player } from '@/types'
 
 /** Dimension in pixels for the navbar player avatar image. */
-const NAVBAR_AVATAR_SIZE_PX = 28
+const NAVBAR_AVATAR_SIZE_PX = 26
 
 /** Maximum character length for player initials badge in the navbar. */
 const NAVBAR_INITIALS_MAX_LENGTH = 3
@@ -20,7 +20,7 @@ interface NavbarClientProps {
 }
 
 /**
- * Renders the sticky glassmorphic navigation bar styled after Cricket Cut-throat Pro.
+ * Renders the sticky responsive glassmorphic navigation bar.
  *
  * @param {NavbarClientProps} props - Component properties including the active player profile.
  * @returns {JSX.Element} Rendered sticky navigation header.
@@ -46,26 +46,33 @@ export function NavbarClient({ player }: NavbarClientProps): JSX.Element {
 
   return (
     <nav className="border-b border-white/[0.08] bg-[#0e1118]/95 backdrop-blur-md sticky top-0 z-50">
-      <div className="max-w-5xl mx-auto px-3 sm:px-4 h-14 sm:h-16 flex items-center justify-between gap-2">
-        <Link href="/" className="flex items-center gap-2.5 group">
-          <span className="text-xl sm:text-2xl transition-transform group-hover:scale-110">⚽</span>
-          <span className="app-title text-base sm:text-xl text-white tracking-wider">
+      <div className="max-w-5xl mx-auto px-2.5 sm:px-4 h-14 sm:h-16 flex items-center justify-between gap-1.5 sm:gap-2">
+        <Link href="/" className="flex items-center gap-1.5 sm:gap-2.5 group shrink-0">
+          <span className="text-lg sm:text-2xl transition-transform group-hover:scale-110">⚽</span>
+          <span className="app-title text-sm sm:text-xl text-white tracking-wider">
             <span className="hidden sm:inline">Baby-Ménil</span>
             <span className="sm:hidden">Baby</span>
           </span>
-          <span className="hidden md:inline-block rounded-lg bg-emerald-500/10 border border-emerald-500/25 px-2.5 py-0.5 text-[10px] font-display font-bold uppercase tracking-widest text-emerald-400">
-            Pro ELO
-          </span>
         </Link>
 
-        <div className="flex items-center gap-1.5 sm:gap-2">
-          <Link href="/leaderboard" className="btn-ghost px-2.5 sm:px-3.5 py-1.5 text-[11px] sm:text-xs">
-            Classement
+        <div className="flex items-center gap-1 sm:gap-2 overflow-x-auto no-scrollbar py-1">
+          <Link
+            href="/leaderboard"
+            className="btn-ghost px-2 sm:px-3.5 py-1.5 text-[11px] sm:text-xs shrink-0"
+          >
+            <span className="sm:hidden">Class.</span>
+            <span className="hidden sm:inline">Classement</span>
           </Link>
-          <Link href="/matches" className="btn-ghost px-2.5 sm:px-3.5 py-1.5 text-[11px] sm:text-xs">
+          <Link
+            href="/matches"
+            className="btn-ghost px-2 sm:px-3.5 py-1.5 text-[11px] sm:text-xs shrink-0"
+          >
             Matchs
           </Link>
-          <Link href="/head-to-head" className="btn-ghost px-2.5 sm:px-3.5 py-1.5 text-[11px] sm:text-xs">
+          <Link
+            href="/head-to-head"
+            className="btn-ghost px-2 sm:px-3.5 py-1.5 text-[11px] sm:text-xs shrink-0"
+          >
             H2H
           </Link>
 
@@ -73,14 +80,14 @@ export function NavbarClient({ player }: NavbarClientProps): JSX.Element {
             <>
               <Link
                 href="/matches/new"
-                className="rounded-xl bg-gradient-to-r from-emerald-500 to-teal-400 px-3 sm:px-3.5 py-1.5 text-[11px] sm:text-xs font-display font-bold uppercase tracking-wider text-slate-950 shadow-md shadow-emerald-500/20 hover:brightness-110 active:scale-95 transition-all"
+                className="rounded-xl bg-gradient-to-r from-emerald-500 to-teal-400 px-2.5 sm:px-3.5 py-1.5 text-[11px] sm:text-xs font-display font-bold uppercase tracking-wider text-slate-950 shadow-md shadow-emerald-500/20 hover:brightness-110 active:scale-95 transition-all shrink-0"
               >
                 <span className="sm:hidden">+</span>
                 <span className="hidden sm:inline">+ Match</span>
               </Link>
               <Link
                 href={`/profile/${player.id}`}
-                className="flex items-center gap-1.5 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] border border-white/10 px-2 py-1 transition-all"
+                className="flex items-center gap-1.5 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] border border-white/10 px-1.5 sm:px-2 py-1 transition-all shrink-0"
                 title={player.display_name}
               >
                 {player.avatar_url ? (
@@ -96,13 +103,14 @@ export function NavbarClient({ player }: NavbarClientProps): JSX.Element {
                     {player.display_name[0]}
                   </div>
                 )}
-                <span className="hidden sm:inline font-display font-bold text-xs tracking-wider text-slate-200">
+                <span className="hidden md:inline font-display font-bold text-xs tracking-wider text-slate-200">
                   {playerInitials}
                 </span>
               </Link>
               <button
+                type="button"
                 onClick={handleSignOut}
-                className="rounded-xl bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/20 text-rose-300 text-[11px] font-display font-bold uppercase tracking-wider px-2.5 py-1.5 active:scale-95 transition-all"
+                className="rounded-xl bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/20 text-rose-300 text-[10px] sm:text-[11px] font-display font-bold uppercase tracking-wider px-2 sm:px-2.5 py-1.5 active:scale-95 transition-all shrink-0"
               >
                 Déco
               </button>
@@ -110,7 +118,7 @@ export function NavbarClient({ player }: NavbarClientProps): JSX.Element {
           ) : (
             <Link
               href="/auth/login"
-              className="rounded-xl bg-gradient-to-r from-emerald-500 to-teal-400 px-3.5 py-1.5 text-xs font-display font-bold uppercase tracking-wider text-slate-950 shadow-md shadow-emerald-500/20 hover:brightness-110 active:scale-95 transition-all"
+              className="rounded-xl bg-gradient-to-r from-emerald-500 to-teal-400 px-2.5 sm:px-3.5 py-1.5 text-[11px] sm:text-xs font-display font-bold uppercase tracking-wider text-slate-950 shadow-md shadow-emerald-500/20 hover:brightness-110 active:scale-95 transition-all shrink-0"
             >
               Connexion
             </Link>

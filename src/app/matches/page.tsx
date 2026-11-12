@@ -44,7 +44,7 @@ interface MatchHistoryRecord {
 }
 
 /**
- * Renders the chronological match history page styled after Cricket Cut-throat Pro's action log.
+ * Renders the chronological match history page with responsive match rows.
  *
  * @returns {Promise<JSX.Element>} The rendered match history page.
  */
@@ -71,25 +71,28 @@ export default async function MatchesPage(): Promise<JSX.Element> {
   return (
     <div className="min-h-screen">
       <Navbar />
-      <main className="max-w-4xl mx-auto p-3 sm:p-6 space-y-6">
+      <main className="max-w-4xl mx-auto p-3 sm:p-6 space-y-4 sm:space-y-6">
         {/* Header Panel */}
-        <div className="panel rounded-3xl p-5 sm:p-6 shadow-2xl flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div>
+        <div className="panel rounded-3xl p-4 sm:p-6 shadow-2xl flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
+          <div className="min-w-0">
             <div className="step-tag">Journal des Rencontres</div>
-            <h1 className="app-title text-2xl sm:text-3xl text-white mt-1.5">
+            <h1 className="app-title text-xl sm:text-3xl text-white mt-1.5 truncate">
               Historique des Matchs
             </h1>
           </div>
-          <Link href="/matches/new" className="btn-primary text-xs sm:text-sm py-2.5 px-4 self-start sm:self-auto">
+          <Link
+            href="/matches/new"
+            className="btn-primary text-xs sm:text-sm py-2.5 px-4 text-center w-full sm:w-auto shrink-0"
+          >
             + Nouveau Match
           </Link>
         </div>
 
         {/* Matches List Panel */}
-        <div className="panel rounded-3xl p-4 sm:p-6 shadow-2xl space-y-3">
+        <div className="panel rounded-3xl p-3.5 sm:p-6 shadow-2xl space-y-3">
           <div className="flex items-center justify-between mb-2">
             <span className="text-xs font-display uppercase tracking-widest text-slate-400">
-              Derniers Matchs Enregistrés
+              Derniers Matchs
             </span>
             <span className="text-xs font-display text-slate-500 uppercase tracking-wider">
               {matchesList.length} affichés
@@ -117,7 +120,7 @@ export default async function MatchesPage(): Promise<JSX.Element> {
               <Link
                 key={matchItem.id}
                 href={`/matches/${matchItem.id}`}
-                className="ranking-row flex items-center justify-between gap-4 group block"
+                className="ranking-row p-3 sm:p-4 flex items-center justify-between gap-2 sm:gap-4 group block"
               >
                 <div className="flex-1 min-w-0 space-y-2">
                   <div className="flex items-center gap-2 flex-wrap">
@@ -138,18 +141,18 @@ export default async function MatchesPage(): Promise<JSX.Element> {
                     )}
                   </div>
 
-                  <div className="grid grid-cols-[1fr,auto,1fr] items-center gap-3">
+                  <div className="grid grid-cols-[1fr,auto,1fr] items-center gap-2 sm:gap-3">
                     <span
-                      className={`font-display font-bold text-sm sm:text-base truncate text-right ${
+                      className={`font-display font-bold text-xs sm:text-base truncate text-right min-w-0 ${
                         didTeamAWin ? 'text-white' : 'text-slate-500'
                       }`}
                     >
                       {teamAPlayerNames.join(' & ')}
                     </span>
 
-                    <div className="number-pill px-3 py-1 flex items-center gap-2 shrink-0">
+                    <div className="number-pill px-2.5 sm:px-3 py-1 flex items-center gap-1.5 sm:gap-2 shrink-0">
                       <span
-                        className={`score-value text-lg sm:text-xl font-black ${
+                        className={`score-value text-base sm:text-xl font-black ${
                           didTeamAWin ? 'text-emerald-400' : 'text-slate-400'
                         }`}
                       >
@@ -157,7 +160,7 @@ export default async function MatchesPage(): Promise<JSX.Element> {
                       </span>
                       <span className="text-slate-600">:</span>
                       <span
-                        className={`score-value text-lg sm:text-xl font-black ${
+                        className={`score-value text-base sm:text-xl font-black ${
                           !didTeamAWin ? 'text-emerald-400' : 'text-slate-400'
                         }`}
                       >
@@ -166,7 +169,7 @@ export default async function MatchesPage(): Promise<JSX.Element> {
                     </div>
 
                     <span
-                      className={`font-display font-bold text-sm sm:text-base truncate text-left ${
+                      className={`font-display font-bold text-xs sm:text-base truncate text-left min-w-0 ${
                         !didTeamAWin ? 'text-white' : 'text-slate-500'
                       }`}
                     >
@@ -175,7 +178,7 @@ export default async function MatchesPage(): Promise<JSX.Element> {
                   </div>
                 </div>
 
-                <span className="text-slate-500 group-hover:text-emerald-400 group-hover:translate-x-0.5 transition-all font-display text-lg">
+                <span className="text-slate-500 group-hover:text-emerald-400 group-hover:translate-x-0.5 transition-all font-display text-lg shrink-0">
                   ›
                 </span>
               </Link>

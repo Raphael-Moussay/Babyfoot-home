@@ -95,16 +95,16 @@ function renderTeamPlayersList(teamRecord: DetailedMatchTeam | undefined): JSX.E
   return (
     <div className="space-y-1.5">
       {teamRecord.match_players.map((participant: DetailedMatchPlayer) => (
-        <div key={participant.players.id} className="flex items-center justify-center gap-2">
+        <div key={participant.players.id} className="flex items-center justify-center gap-2 min-w-0">
           <Link
             href={`/profile/${participant.players.id}`}
-            className="player-initials text-base sm:text-lg hover:text-emerald-400 transition-colors"
+            className="player-initials text-sm sm:text-lg hover:text-emerald-400 transition-colors"
           >
             {participant.players.display_name}
           </Link>
           {participant.role !== 'solo' && (
             <span
-              className="text-xs px-1.5 py-0.5 rounded bg-white/5 border border-white/10"
+              className="text-xs px-1.5 py-0.5 rounded bg-white/5 border border-white/10 shrink-0"
               title={participant.role === 'attacker' ? 'Attaquant' : 'Défenseur'}
             >
               {participant.role === 'attacker' ? '⚔️' : '🛡️'}
@@ -179,21 +179,21 @@ export default async function MatchDetailPage({
   return (
     <div className="min-h-screen">
       <Navbar />
-      <main className="max-w-3xl mx-auto p-3 sm:p-6 space-y-5">
+      <main className="max-w-3xl mx-auto p-3 sm:p-6 space-y-4 sm:space-y-5">
         {/* Top Action Bar */}
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between gap-2">
           <Link href="/matches" className="btn-ghost inline-flex items-center gap-1.5">
-            ← Retour aux Matchs
+            ← Retour
           </Link>
           {canEditMatch && (
             <Link href={`/matches/${matchRecord.id}/edit`} className="btn-amber">
-              Modifier le Match
+              Modifier
             </Link>
           )}
         </div>
 
         {/* Main Scoreboard Panel */}
-        <div className="panel rounded-3xl p-6 sm:p-8 text-center shadow-2xl">
+        <div className="panel rounded-3xl p-4 sm:p-8 text-center shadow-2xl">
           <div className="flex items-center gap-2 justify-center mb-4 flex-wrap">
             <span className="badge bg-emerald-500/10 text-emerald-300 border border-emerald-500/25">
               Format {matchRecord.match_type}
@@ -206,9 +206,9 @@ export default async function MatchDetailPage({
             )}
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-center my-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4 items-center my-4 sm:my-6">
             <div
-              className={`score-card p-4 ${
+              className={`score-card p-3.5 sm:p-4 ${
                 didTeamAWin
                   ? 'border-emerald-500/35 bg-emerald-500/[0.06]'
                   : 'opacity-75'
@@ -220,18 +220,18 @@ export default async function MatchDetailPage({
               {renderTeamPlayersList(teamARecord)}
             </div>
 
-            <div className="py-2">
-              <div className="inline-flex items-center gap-3 px-5 py-3 rounded-2xl bg-[#0a0d12] border border-white/10">
+            <div className="py-1 sm:py-2">
+              <div className="inline-flex items-center gap-3 px-4 sm:px-5 py-2.5 sm:py-3 rounded-2xl bg-[#0a0d12] border border-white/10">
                 <span
-                  className={`score-value text-4xl sm:text-5xl font-black ${
+                  className={`score-value text-3xl sm:text-5xl font-black ${
                     didTeamAWin ? 'text-emerald-400' : 'text-slate-500'
                   }`}
                 >
                   {matchRecord.team_a_score}
                 </span>
-                <span className="font-display text-2xl text-slate-600">:</span>
+                <span className="font-display text-xl sm:text-2xl text-slate-600">:</span>
                 <span
-                  className={`score-value text-4xl sm:text-5xl font-black ${
+                  className={`score-value text-3xl sm:text-5xl font-black ${
                     !didTeamAWin ? 'text-emerald-400' : 'text-slate-500'
                   }`}
                 >
@@ -241,7 +241,7 @@ export default async function MatchDetailPage({
             </div>
 
             <div
-              className={`score-card p-4 ${
+              className={`score-card p-3.5 sm:p-4 ${
                 !didTeamAWin
                   ? 'border-emerald-500/35 bg-emerald-500/[0.06]'
                   : 'opacity-75'
@@ -255,7 +255,7 @@ export default async function MatchDetailPage({
           </div>
 
           {totalFannySets >= MIN_FANNY_BANNER_COUNT && (
-            <div className="mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-amber-500/10 border border-amber-500/25 text-amber-300 text-xs sm:text-sm font-display font-bold uppercase tracking-wider">
+            <div className="mt-3 sm:mt-4 inline-flex items-center gap-2 px-3.5 py-2 rounded-2xl bg-amber-500/10 border border-amber-500/25 text-amber-300 text-xs sm:text-sm font-display font-bold uppercase tracking-wider">
               <span>🏳️</span>
               <span>
                 {totalFannySets} {totalFannySets === 1 ? 'Fanny infligée' : 'Fanny infligées'} durant ce match !
@@ -265,7 +265,7 @@ export default async function MatchDetailPage({
         </div>
 
         {/* Sets Breakdown Panel */}
-        <div className="panel rounded-3xl p-5 sm:p-6 shadow-2xl">
+        <div className="panel rounded-3xl p-4 sm:p-6 shadow-2xl">
           <div className="flex items-center justify-between mb-4">
             <div className="step-tag">Détail des Manches</div>
             <span className="text-xs font-display uppercase tracking-wider text-slate-400">
@@ -277,15 +277,15 @@ export default async function MatchDetailPage({
             {sortedSets.map((matchSet: DetailedMatchSet, setIndex: number) => (
               <div
                 key={matchSet.id}
-                className="history-row flex items-center justify-between gap-3"
+                className="history-row px-3 py-2.5 sm:px-3.5 flex items-center justify-between gap-2 sm:gap-3"
               >
-                <span className="number-pill w-24 shrink-0 text-xs">
+                <span className="number-pill w-20 sm:w-24 shrink-0 text-[11px] sm:text-xs px-1.5">
                   Manche {setIndex + 1}
                 </span>
 
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2 sm:gap-3">
                   <span
-                    className={`score-value text-2xl font-black ${
+                    className={`score-value text-xl sm:text-2xl font-black ${
                       matchSet.winner_team === 'A' ? 'text-emerald-400' : 'text-slate-500'
                     }`}
                   >
@@ -293,7 +293,7 @@ export default async function MatchDetailPage({
                   </span>
                   <span className="font-display text-slate-600">-</span>
                   <span
-                    className={`score-value text-2xl font-black ${
+                    className={`score-value text-xl sm:text-2xl font-black ${
                       matchSet.winner_team === 'B' ? 'text-emerald-400' : 'text-slate-500'
                     }`}
                   >
@@ -301,13 +301,13 @@ export default async function MatchDetailPage({
                   </span>
                 </div>
 
-                <div className="w-24 text-right">
+                <div className="w-20 sm:w-24 text-right shrink-0">
                   {matchSet.is_fanny ? (
-                    <span className="badge bg-amber-500/15 text-amber-300 border border-amber-500/30">
+                    <span className="badge bg-amber-500/15 text-amber-300 border border-amber-500/30 text-[10px] sm:text-xs px-1.5 sm:px-2.5">
                       🏳️ FANNY
                     </span>
                   ) : (
-                    <span className="text-xs font-display uppercase text-slate-500">
+                    <span className="text-[11px] sm:text-xs font-display uppercase text-slate-500">
                       Équipe {matchSet.winner_team}
                     </span>
                   )}
@@ -319,7 +319,7 @@ export default async function MatchDetailPage({
 
         {/* ELO Variations Panel */}
         {eloHistoryList.length > 0 && (
-          <div className="panel rounded-3xl p-5 sm:p-6 shadow-2xl">
+          <div className="panel rounded-3xl p-4 sm:p-6 shadow-2xl">
             <div className="flex items-center justify-between mb-4">
               <div className="step-tag">Variation ELO</div>
               <span className="text-xs font-display uppercase tracking-wider text-slate-400">
@@ -335,16 +335,16 @@ export default async function MatchDetailPage({
                 >
                   <Link
                     href={`/profile/${historyItem.player_id}`}
-                    className="font-display font-bold text-sm sm:text-base text-white hover:text-emerald-400 transition-colors"
+                    className="font-display font-bold text-xs sm:text-base text-white hover:text-emerald-400 transition-colors truncate min-w-0"
                   >
                     {historyItem.players?.display_name}
                   </Link>
-                  <div className="flex items-center gap-3 text-sm font-display score-value">
+                  <div className="flex items-center gap-2 sm:gap-3 text-xs sm:text-sm font-display score-value shrink-0">
                     <span className="text-slate-500">{historyItem.elo_before}</span>
                     <span className="text-slate-600">→</span>
                     <span className="font-bold text-slate-200">{historyItem.elo_after}</span>
                     <span
-                      className={`font-black w-12 text-right ${eloDeltaColor(historyItem.delta)}`}
+                      className={`font-black w-10 sm:w-12 text-right ${eloDeltaColor(historyItem.delta)}`}
                     >
                       {eloDeltaLabel(historyItem.delta)}
                     </span>
@@ -356,7 +356,7 @@ export default async function MatchDetailPage({
         )}
 
         {/* Footer Metadata & Dispute Trigger */}
-        <div className="panel rounded-2xl px-5 py-3.5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 text-xs text-slate-400">
+        <div className="panel rounded-2xl px-4 py-3.5 sm:px-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5 text-xs text-slate-400">
           <span>
             Enregistré par :{' '}
             <strong className="font-display text-white uppercase tracking-wider">

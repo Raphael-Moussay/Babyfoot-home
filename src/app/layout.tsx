@@ -19,7 +19,7 @@ const plusJakartaSans = Plus_Jakarta_Sans({
 
 /** Default application metadata configuration. */
 export const metadata: Metadata = {
-  title: 'Baby-Ménil — Pro Tracker',
+  title: 'Baby-Ménil',
   description: 'Suivez vos parties de baby-foot, classement ELO et statistiques en temps réel',
   icons: {
     icon: '/favicon.svg',
